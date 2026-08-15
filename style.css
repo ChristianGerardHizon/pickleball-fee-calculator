@@ -48,6 +48,7 @@ body {
   max-width: 960px;
   margin: 0 auto;
   padding: 20px 16px 48px;
+  overflow-x: hidden;
 }
 
 /* Gate screen */
@@ -126,15 +127,12 @@ body {
 
 /* Header */
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   padding: 12px 18px;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(10px);
@@ -147,6 +145,13 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.brand > div { min-width: 0; }
+
+#switch-event-btn {
+  flex: none;
 }
 
 .brand-icon {
@@ -175,13 +180,17 @@ body {
   font-weight: 700;
   margin: 0;
   color: var(--teal-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Layout */
 .grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 18px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 @media (min-width: 720px) {
@@ -194,8 +203,14 @@ body {
   border: 1px solid var(--border);
   padding: 20px;
   box-shadow: var(--shadow-sm);
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   transition: box-shadow 0.2s ease;
+}
+
+/* Grid gap already provides spacing between these cards — an extra
+   margin-bottom here would double up once they stack to one column. */
+.grid > .card {
+  margin-bottom: 0;
 }
 
 .card:hover { box-shadow: var(--shadow-md); }
@@ -257,12 +272,14 @@ input[type="date"],
 input[type="number"],
 textarea {
   font-family: inherit;
-  font-size: 0.95rem;
+  /* 16px stops iOS Safari auto-zooming the page on focus */
+  font-size: 16px;
   padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: #fff;
   color: var(--text);
+  width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -273,10 +290,8 @@ input:focus, textarea:focus {
 }
 
 textarea {
-  width: 100%;
   resize: vertical;
   margin: 10px 0;
-  font-size: 0.9rem;
 }
 
 .btn-primary, .btn-secondary {
@@ -407,11 +422,14 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
+
+.participant-row .remove-btn { flex: none; }
 
 .participant-row.paid {
   background: var(--paid-bg);
@@ -425,11 +443,18 @@ textarea {
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.participant-check span {
+  overflow-wrap: anywhere;
 }
 
 .participant-check input {
-  width: 19px;
-  height: 19px;
+  width: 20px;
+  height: 20px;
+  flex: none;
   accent-color: var(--teal-800);
   cursor: pointer;
 }
@@ -465,20 +490,21 @@ textarea {
 
 .summary-highlight-value {
   display: block;
-  font-size: 2.4rem;
+  font-size: clamp(1.7rem, 7vw, 2.4rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   position: relative;
+  word-break: break-word;
 }
 
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px;
 }
 
-@media (min-width: 480px) {
-  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 560px) {
+  .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
 }
 
 .summary-grid > div {
@@ -499,9 +525,10 @@ textarea {
 }
 
 .summary-grid .value {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--teal-900);
+  word-break: break-word;
 }
 
 /* Master manage list */
@@ -586,4 +613,72 @@ textarea {
   border: 1px solid var(--border);
   margin-top: 12px;
   box-shadow: var(--shadow-sm);
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  #app {
+    padding: 14px 12px 36px;
+  }
+
+  .gate-card {
+    padding: 32px 22px 24px;
+    max-width: 340px;
+  }
+
+  .app-header {
+    padding: 12px 14px;
+  }
+
+  #switch-event-btn {
+    width: 100%;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .card h2 {
+    font-size: 0.95rem;
+  }
+
+  .summary-highlight {
+    padding: 16px 18px;
+  }
+
+  .quick-add {
+    flex-wrap: wrap;
+  }
+
+  .quick-add input {
+    flex-basis: 100%;
+  }
+
+  .quick-add button {
+    flex: 1;
+  }
+
+  .court-row {
+    gap: 8px;
+  }
+
+  .court-label {
+    flex-basis: 54px;
+    font-size: 0.8rem;
+  }
+
+  .modal-content {
+    padding: 20px 16px;
+  }
+
+  /* Comfortable tap targets on touch screens */
+  .btn-primary,
+  .btn-secondary {
+    padding: 12px 18px;
+  }
+
+  .remove-btn {
+    width: 34px;
+    height: 34px;
+  }
 }
