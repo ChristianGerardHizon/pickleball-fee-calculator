@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pickleball Court Fee Splitter</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Gate Screen -->
+  <section id="gate-screen" class="screen">
+    <div class="gate-card">
+      <h1>🏓 Pickleball Fee Splitter</h1>
+      <p class="subtitle">Enter the event date and password to open or create an event.</p>
+
+      <label for="gate-date">Event date</label>
+      <input type="date" id="gate-date" />
+
+      <label for="gate-password">Password</label>
+      <input type="password" id="gate-password" placeholder="Password" autocomplete="off" />
+
+      <button id="gate-submit" class="btn-primary">Open Event</button>
+      <p id="gate-error" class="error-text"></p>
+    </div>
+  </section>
+
+  <!-- Main Screen -->
+  <section id="main-screen" class="screen hidden">
+    <header class="app-header">
+      <h1>🏓 <span id="event-date-label"></span></h1>
+      <button id="switch-event-btn" class="btn-secondary">Switch Event</button>
+    </header>
+
+    <div class="grid">
+      <!-- Courts -->
+      <div class="card">
+        <h2>Courts</h2>
+        <div id="courts-list"></div>
+        <button id="add-court-btn" class="btn-secondary">+ Add Court</button>
+      </div>
+
+      <!-- Participants -->
+      <div class="card">
+        <h2>Participants</h2>
+
+        <details id="mass-input-details">
+          <summary>Mass add (paste a numbered list)</summary>
+          <textarea id="mass-input" rows="6" placeholder="1. johanna&#10;2. bea&#10;3. christian&#10;4. stef"></textarea>
+          <button id="mass-add-btn" class="btn-secondary">Add / Merge</button>
+        </details>
+
+        <div class="quick-add">
+          <input type="text" id="quick-add-input" placeholder="Add participant name" />
+          <button id="quick-add-btn" class="btn-secondary">Add</button>
+        </div>
+
+        <div id="master-chips" class="chips"></div>
+
+        <div id="participants-list" class="participant-list"></div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card summary-card">
+      <h2>Summary</h2>
+      <div id="summary-content"></div>
+      <button id="share-btn" class="btn-primary">📤 Generate Shareable Image</button>
+    </div>
+
+    <details class="card">
+      <summary>Manage Master List</summary>
+      <p class="hint">This is the full list of members remembered across events. Removing someone here only affects future events.</p>
+      <div id="master-manage-list"></div>
+    </details>
+  </section>
+
+</div>
+
+<!-- Share Modal -->
+<div id="share-modal" class="modal hidden">
+  <div class="modal-content">
+    <button id="close-modal-btn" class="modal-close" aria-label="Close">&times;</button>
+    <h2>Shareable Summary</h2>
+    <canvas id="share-canvas" class="hidden"></canvas>
+    <img id="share-image" alt="Shareable summary" />
+    <p class="hint">Long-press the image to save, or use the button below.</p>
+    <a id="download-link" class="btn-primary" download="pickleball-split.png">Download Image</a>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
