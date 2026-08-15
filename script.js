@@ -40,7 +40,7 @@
   function createEventIfNeeded(date) {
     if (!state.data.events[date]) {
       state.data.events[date] = {
-        courts: [{ fee: 0 }],
+        courts: [{ fee: 0, payer: "" }],
         participants: state.data.masterList.map((name) => ({ name, paid: false })),
         createdAt: new Date().toISOString(),
       };
@@ -98,6 +98,40 @@
 
   const ICON_X = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
+  // Only surfaced when 2+ distinct payer names are set across courts — leaving
+  // every court's "Paid by" blank (or all the same name) keeps the app in its
+  // original single-owner behavior with no reimbursement breakdown shown.
+  // Money already collected from paid participants is attributed to each
+  // payer proportionally to the share of the total fee they fronted.
+  function getPayerBreakdown(event, totalFee, totalCollected) {
+    const payerTotals = new Map();
+    event.courts.forEach((c) => {
+      const payer = (c.payer || "").trim();
+      if (!payer) return;
+      const fee = Number(c.fee) || 0;
+      payerTotals.set(payer, (payerTotals.get(payer) || 0) + fee);
+    });
+
+    if (payerTotals.size < 2) return null;
+
+    const assignedTotal = Array.from(payerTotals.values()).reduce((a, b) => a + b, 0);
+    const unassigned = totalFee - assignedTotal;
+
+    const rows = Array.from(payerTotals.entries()).map(([payer, feeSum]) => {
+      const share = totalFee > 0 ? feeSum / totalFee : 0;
+      const collected = totalCollected * share;
+      return { payer, feeSum, collected, remaining: feeSum - collected };
+    });
+
+    if (unassigned > 0.004) {
+      const share = totalFee > 0 ? unassigned / totalFee : 0;
+      const collected = totalCollected * share;
+      rows.push({ payer: "Unassigned", feeSum: unassigned, collected, remaining: unassigned - collected });
+    }
+
+    return rows;
+  }
+
   // ---------- DOM refs ----------
 
   const gateScreenEl = document.getElementById("gate-screen");
@@ -147,9 +181,12 @@
       const row = document.createElement("div");
       row.className = "court-row";
       row.innerHTML = `
-        <span class="court-label">Court ${idx + 1}</span>
-        <input type="number" min="0" step="0.01" class="court-fee-input" value="${court.fee}" data-idx="${idx}" />
-        <button class="remove-btn" data-idx="${idx}" aria-label="Remove court">${ICON_X}</button>
+        <div class="court-row-main">
+          <span class="court-label">Court ${idx + 1}</span>
+          <input type="number" min="0" step="0.01" class="court-fee-input" value="${court.fee}" data-idx="${idx}" />
+          <button class="remove-btn" data-idx="${idx}" aria-label="Remove court">${ICON_X}</button>
+        </div>
+        <input type="text" class="court-payer-input" placeholder="Paid by (optional)" value="${escapeHtml(court.payer || "")}" data-idx="${idx}" />
       `;
       courtsListEl.appendChild(row);
     });
@@ -203,20 +240,41 @@
     const paidCount = event.participants.filter((p) => p.paid).length;
     const collected = paidCount * perPerson;
     const remaining = totalFee - collected;
+    const payerRows = getPayerBreakdown(event, totalFee, collected);
 
     summaryContentEl.innerHTML = `
       <div class="summary-highlight">
         <span class="summary-highlight-label">Amount per person</span>
-        <span class="summary-highlight-value">${formatCurrency(perPerson)}</span>
+        <span class="summary-highlight-value money">${formatCurrency(perPerson)}</span>
       </div>
       <div class="summary-grid">
         <div><span class="label">Courts</span><span class="value">${event.courts.length}</span></div>
-        <div><span class="label">Total Fee</span><span class="value">${formatCurrency(totalFee)}</span></div>
+        <div><span class="label">Total Fee</span><span class="value money">${formatCurrency(totalFee)}</span></div>
         <div><span class="label">Participants</span><span class="value">${count}</span></div>
         <div><span class="label">Paid</span><span class="value">${paidCount} / ${count}</span></div>
-        <div><span class="label">Collected</span><span class="value">${formatCurrency(collected)}</span></div>
-        <div><span class="label">Remaining</span><span class="value">${formatCurrency(remaining)}</span></div>
+        <div><span class="label">Collected</span><span class="value money">${formatCurrency(collected)}</span></div>
+        <div><span class="label">Remaining</span><span class="value money">${formatCurrency(remaining)}</span></div>
       </div>
+      ${
+        payerRows
+          ? `
+      <div class="payer-breakdown">
+        <h3 class="payer-breakdown-title">Reimbursements</h3>
+        ${payerRows
+          .map(
+            (r) => `
+        <div class="payer-row">
+          <span class="payer-name">${escapeHtml(r.payer)}</span>
+          <div class="payer-amounts">
+            <span class="payer-remaining money">${formatCurrency(r.remaining)}<span class="payer-sub">owed</span></span>
+            <span class="payer-total money">of ${formatCurrency(r.feeSum)} fronted</span>
+          </div>
+        </div>`
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
     `;
   }
 
@@ -274,16 +332,20 @@
   switchEventBtn.addEventListener("click", showGateScreen);
 
   addCourtBtn.addEventListener("click", () => {
-    getCurrentEvent().courts.push({ fee: 0 });
+    getCurrentEvent().courts.push({ fee: 0, payer: "" });
     saveData();
     renderCourts();
     renderSummary();
   });
 
   courtsListEl.addEventListener("input", (e) => {
+    const idx = Number(e.target.dataset.idx);
     if (e.target.classList.contains("court-fee-input")) {
-      const idx = Number(e.target.dataset.idx);
       getCurrentEvent().courts[idx].fee = parseFloat(e.target.value) || 0;
+      saveData();
+      renderSummary();
+    } else if (e.target.classList.contains("court-payer-input")) {
+      getCurrentEvent().courts[idx].payer = e.target.value;
       saveData();
       renderSummary();
     }
@@ -365,6 +427,13 @@
 
   const SHARE_FONT = '"Plus Jakarta Sans", Arial, sans-serif';
   const shareFont = (weight, size) => `${weight} ${size}px ${SHARE_FONT}`;
+  // Peso amounts use a dedicated Arial-only stack (no "Plus Jakarta Sans, Arial"
+  // fallback chain) so the whole string resolves to one font. Mixing fonts per
+  // request meant the "₱" glyph (missing from Plus Jakarta Sans) silently fell
+  // back to Arial's regular weight while the digits stayed at the requested
+  // weight, making the peso sign look thin/broken next to bold numbers.
+  const MONEY_FONT = "Arial, sans-serif";
+  const moneyFont = (weight, size) => `${weight >= 700 ? "bold" : "normal"} ${size}px ${MONEY_FONT}`;
   const SHARE_COLORS = {
     bg: "#f8fafc",
     surface: "#ffffff",
@@ -430,6 +499,10 @@
     const count = event.participants.length;
     const perPerson = count > 0 ? totalFee / count : 0;
     const names = event.participants.map((p) => titleCase(p.name));
+    // Reuses the same reimbursement math as the in-app summary, but the
+    // canvas only ever reads .payer/.feeSum from it — collected/remaining
+    // are derived from paid status, which this image intentionally excludes.
+    const payerRows = getPayerBreakdown(event, totalFee, 0);
 
     const W = 800;
     const PAD = 40;
@@ -448,6 +521,8 @@
     const courtRowH = 30;
     const courtsCardH =
       CP + 22 + 16 + (event.courts.length > 0 ? event.courts.length * courtRowH : courtRowH) + 16 + 24 + CP;
+    const payerRowH = 30;
+    const payerCardH = payerRows ? CP + 22 + 16 + payerRows.length * payerRowH + CP : 0;
 
     const chips = layoutChips(
       ctx,
@@ -463,7 +538,16 @@
 
     const GAP = 20;
     const totalHeight =
-      HEADER_H + GAP + HIGHLIGHT_H + GAP + courtsCardH + GAP + participantsCardH + GAP + 30;
+      HEADER_H +
+      GAP +
+      HIGHLIGHT_H +
+      GAP +
+      courtsCardH +
+      GAP +
+      (payerRows ? payerCardH + GAP : 0) +
+      participantsCardH +
+      GAP +
+      30;
 
     canvas.width = W;
     canvas.height = totalHeight;
@@ -501,7 +585,7 @@
     ctx.font = shareFont(600, 14);
     ctx.fillText("AMOUNT PER PERSON", PAD + CP, y + 38);
     ctx.fillStyle = "#ffffff";
-    ctx.font = shareFont(800, 44);
+    ctx.font = moneyFont(700, 44);
     ctx.fillText(formatCurrency(perPerson), PAD + CP, y + 86);
 
     const statX = PAD + CW - CP;
@@ -510,7 +594,7 @@
     ctx.font = shareFont(600, 13);
     ctx.fillText("TOTAL POOL", statX, y + 38);
     ctx.fillStyle = "#ffffff";
-    ctx.font = shareFont(700, 22);
+    ctx.font = moneyFont(700, 22);
     ctx.fillText(formatCurrency(totalFee), statX, y + 64);
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.font = shareFont(600, 13);
@@ -548,7 +632,7 @@
         ctx.textAlign = "left";
         ctx.fillText(`Court ${idx + 1}`, PAD + CP, cy);
         ctx.fillStyle = SHARE_COLORS.ink900;
-        ctx.font = shareFont(600, 15);
+        ctx.font = moneyFont(700, 15);
         ctx.textAlign = "right";
         ctx.fillText(formatCurrency(c.fee), PAD + CW - CP, cy);
         ctx.textAlign = "left";
@@ -570,13 +654,45 @@
     ctx.textAlign = "left";
     ctx.fillText("Total", PAD + CP, cy);
     ctx.fillStyle = SHARE_COLORS.emerald700;
-    ctx.font = shareFont(800, 17);
+    ctx.font = moneyFont(700, 17);
     ctx.textAlign = "right";
     ctx.fillText(formatCurrency(totalFee), PAD + CW - CP, cy);
     ctx.textAlign = "left";
 
-    // participants card
+    // paid-by card (only when courts have 2+ distinct payers)
     y += courtsCardH + GAP;
+    if (payerRows) {
+      ctx.fillStyle = SHARE_COLORS.surface;
+      roundRect(ctx, PAD, y, CW, payerCardH, 16);
+      ctx.fill();
+      ctx.strokeStyle = SHARE_COLORS.ink200;
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, PAD, y, CW, payerCardH, 16);
+      ctx.stroke();
+
+      let py = y + CP + 6;
+      ctx.fillStyle = SHARE_COLORS.ink900;
+      ctx.font = shareFont(700, 16);
+      ctx.fillText("Paid By", PAD + CP, py);
+      py += 30;
+
+      payerRows.forEach((r) => {
+        ctx.fillStyle = SHARE_COLORS.ink600;
+        ctx.font = shareFont(500, 15);
+        ctx.textAlign = "left";
+        ctx.fillText(r.payer, PAD + CP, py);
+        ctx.fillStyle = SHARE_COLORS.ink900;
+        ctx.font = moneyFont(700, 15);
+        ctx.textAlign = "right";
+        ctx.fillText(formatCurrency(r.feeSum), PAD + CW - CP, py);
+        ctx.textAlign = "left";
+        py += payerRowH;
+      });
+
+      y += payerCardH + GAP;
+    }
+
+    // participants card
     ctx.fillStyle = SHARE_COLORS.surface;
     roundRect(ctx, PAD, y, CW, participantsCardH, 16);
     ctx.fill();

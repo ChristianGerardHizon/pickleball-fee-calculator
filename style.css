@@ -359,10 +359,22 @@ a:focus-visible,
 
 /* Courts */
 .court-row {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--ink-100);
+}
+
+.court-row:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.court-row-main {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .court-label {
@@ -375,6 +387,14 @@ a:focus-visible,
 .court-fee-input {
   flex: 1;
   min-width: 0;
+}
+
+.court-payer-input {
+  color: var(--ink-600);
+}
+
+.court-payer-input::placeholder {
+  color: var(--ink-500);
 }
 
 .remove-btn {
@@ -512,6 +532,15 @@ a:focus-visible,
   margin-bottom: 16px;
 }
 
+/* Arial-only stack: Plus Jakarta Sans has no "₱" glyph, so mixing fonts
+   here means the peso sign silently falls back to Arial's regular weight
+   while the digits render at the requested bold weight, making the symbol
+   look thin/broken next to the numbers. Keeping the whole string in one
+   font avoids the per-glyph mismatch. */
+.money {
+  font-family: Arial, sans-serif;
+}
+
 .summary-highlight-label {
   display: block;
   font-size: 0.82rem;
@@ -560,6 +589,73 @@ a:focus-visible,
   color: var(--ink-900);
   word-break: break-word;
   font-variant-numeric: tabular-nums;
+}
+
+/* Reimbursements breakdown — only rendered when 2+ distinct court payers
+   are set, so a single-owner event never shows this block. */
+.payer-breakdown {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ink-200);
+}
+
+.payer-breakdown-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+
+.payer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ink-100);
+}
+
+.payer-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.payer-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.payer-amounts {
+  flex: none;
+  text-align: right;
+}
+
+.payer-remaining {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.payer-sub {
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 600;
+  font-size: 0.68rem;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: 4px;
+}
+
+.payer-total {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-500);
+  margin-top: 2px;
 }
 
 /* Master manage list */
@@ -691,7 +787,7 @@ a:focus-visible,
     flex: 1;
   }
 
-  .court-row {
+  .court-row-main {
     gap: 8px;
   }
 

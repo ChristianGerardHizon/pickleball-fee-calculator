@@ -4,7 +4,8 @@ A static web app for splitting pickleball court fees among participants. No buil
 
 ## Features
 
-- Add multiple courts, each with its own fee
+- Add multiple courts, each with its own fee and an optional "Paid by" owner
+- When 2+ courts have different owners, the Summary shows a Reimbursements breakdown of how much is owed back to each person (their share of the total pool, collected proportionally as participants pay). Leave "Paid by" blank (or the same on every court) and this stays hidden — the app behaves as a single-owner splitter by default
 - Mass-add participants by pasting a numbered list (e.g. `1. johanna`), or add one at a time
 - Master list of members is remembered across events, so new event dates can reuse or tweak the previous roster
 - Per-event checklist to mark who has paid, with collected/remaining totals
