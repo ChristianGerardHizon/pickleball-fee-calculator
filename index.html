@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pickleball Court Fee Splitter</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏓</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,7 +16,8 @@
   <!-- Gate Screen -->
   <section id="gate-screen" class="screen">
     <div class="gate-card">
-      <h1>🏓 Pickleball Fee Splitter</h1>
+      <div class="brand-badge">🏓</div>
+      <h1>Pickleball Fee Splitter</h1>
       <p class="subtitle">Enter the event date and password to open or create an event.</p>
 
       <label for="gate-date">Event date</label>
@@ -29,21 +34,27 @@
   <!-- Main Screen -->
   <section id="main-screen" class="screen hidden">
     <header class="app-header">
-      <h1>🏓 <span id="event-date-label"></span></h1>
+      <div class="brand">
+        <span class="brand-icon">🏓</span>
+        <div>
+          <span class="brand-title">Fee Splitter</span>
+          <h1 id="event-date-label"></h1>
+        </div>
+      </div>
       <button id="switch-event-btn" class="btn-secondary">Switch Event</button>
     </header>
 
     <div class="grid">
       <!-- Courts -->
       <div class="card">
-        <h2>Courts</h2>
+        <h2><span class="card-icon">🎾</span>Courts</h2>
         <div id="courts-list"></div>
         <button id="add-court-btn" class="btn-secondary">+ Add Court</button>
       </div>
 
       <!-- Participants -->
       <div class="card">
-        <h2>Participants</h2>
+        <h2><span class="card-icon">👥</span>Participants</h2>
 
         <details id="mass-input-details">
           <summary>Mass add (paste a numbered list)</summary>
@@ -64,13 +75,13 @@
 
     <!-- Summary -->
     <div class="card summary-card">
-      <h2>Summary</h2>
+      <h2><span class="card-icon">💰</span>Summary</h2>
       <div id="summary-content"></div>
       <button id="share-btn" class="btn-primary">📤 Generate Shareable Image</button>
     </div>
 
     <details class="card">
-      <summary>Manage Master List</summary>
+      <summary>📋 Manage Master List</summary>
       <p class="hint">This is the full list of members remembered across events. Removing someone here only affects future events.</p>
       <div id="master-manage-list"></div>
     </details>
