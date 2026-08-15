@@ -96,6 +96,8 @@
     return div.innerHTML;
   }
 
+  const ICON_X = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
   // ---------- DOM refs ----------
 
   const gateScreenEl = document.getElementById("gate-screen");
@@ -147,7 +149,7 @@
       row.innerHTML = `
         <span class="court-label">Court ${idx + 1}</span>
         <input type="number" min="0" step="0.01" class="court-fee-input" value="${court.fee}" data-idx="${idx}" />
-        <button class="remove-btn" data-idx="${idx}" aria-label="Remove court">&times;</button>
+        <button class="remove-btn" data-idx="${idx}" aria-label="Remove court">${ICON_X}</button>
       `;
       courtsListEl.appendChild(row);
     });
@@ -164,7 +166,8 @@
           <input type="checkbox" class="paid-checkbox" data-idx="${idx}" ${p.paid ? "checked" : ""} />
           <span>${escapeHtml(titleCase(p.name))}</span>
         </label>
-        <button class="remove-btn" data-idx="${idx}" aria-label="Remove participant">&times;</button>
+        ${p.paid ? '<span class="paid-badge">Paid</span>' : ""}
+        <button class="remove-btn" data-idx="${idx}" aria-label="Remove participant">${ICON_X}</button>
       `;
       participantsListEl.appendChild(row);
     });
@@ -222,7 +225,7 @@
     state.data.masterList.forEach((name, idx) => {
       const row = document.createElement("div");
       row.className = "master-row";
-      row.innerHTML = `<span>${escapeHtml(titleCase(name))}</span><button class="remove-btn" data-idx="${idx}" aria-label="Remove from master list">&times;</button>`;
+      row.innerHTML = `<span>${escapeHtml(titleCase(name))}</span><button class="remove-btn" data-idx="${idx}" aria-label="Remove from master list">${ICON_X}</button>`;
       masterManageListEl.appendChild(row);
     });
   }
@@ -392,11 +395,11 @@
     const ctx = canvas.getContext("2d");
 
     // background
-    ctx.fillStyle = "#f4f9f7";
+    ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, width, height);
 
     // header
-    ctx.fillStyle = "#0f766e";
+    ctx.fillStyle = "#047857";
     ctx.fillRect(0, 0, width, 90);
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
@@ -408,7 +411,7 @@
     // highlight box
     const boxY = 112;
     const boxH = 90;
-    ctx.fillStyle = "#0f766e";
+    ctx.fillStyle = "#047857";
     roundRect(ctx, padding, boxY, width - padding * 2, boxH, 12);
     ctx.fill();
     ctx.fillStyle = "#ffffff";
