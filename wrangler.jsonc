@@ -1,0 +1,22 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "picketball-calculator",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-08-22",
+	"compatibility_flags": ["nodejs_als"],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "pickleball-fee-splitter",
+			"database_id": "28dcabbd-14bc-4f3c-9759-d75acaaab977",
+			"migrations_dir": "migrations"
+		}
+	],
+	"vars": {
+		"PUBLIC_TURNSTILE_SITE_KEY": "1x00000000000000000000BB"
+	}
+}
