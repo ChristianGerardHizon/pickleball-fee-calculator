@@ -8,7 +8,8 @@
 		mergeNamesIntoMaster,
 		persist,
 		persistSoon,
-		showGateScreen
+		showGateScreen,
+		showProfileScreen
 	} from '$lib/state.svelte.js';
 	import IconPaddle from './IconPaddle.svelte';
 	import IconPlus from './IconPlus.svelte';
@@ -105,8 +106,11 @@
 						Save failed
 					{/if}
 				</span>
+				<button type="button" class="btn-secondary switch-event-btn" onclick={showProfileScreen}>
+					Profile
+				</button>
 				<button type="button" class="btn-secondary switch-event-btn" onclick={showGateScreen}>
-					Switch Event
+					Events
 				</button>
 			</div>
 		</header>

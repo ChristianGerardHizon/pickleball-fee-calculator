@@ -1,6 +1,7 @@
 <script>
 	import GateScreen from '$lib/components/GateScreen.svelte';
 	import MainScreen from '$lib/components/MainScreen.svelte';
+	import ProfileScreen from '$lib/components/ProfileScreen.svelte';
 	import RosterScreen from '$lib/components/RosterScreen.svelte';
 	import { app, bootSession } from '$lib/state.svelte.js';
 	import { onMount } from 'svelte';
@@ -21,6 +22,8 @@
 		<GateScreen />
 	{:else if app.screen === 'roster'}
 		<RosterScreen />
+	{:else if app.screen === 'profile'}
+		<ProfileScreen />
 	{:else}
 		<MainScreen />
 	{/if}

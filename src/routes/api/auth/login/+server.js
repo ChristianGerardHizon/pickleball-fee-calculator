@@ -4,6 +4,8 @@ import {
 	isValidEmail,
 	isValidPassword,
 	normalizeEmail,
+	parseRememberMe,
+	publicUser,
 	setSessionCookie,
 	verifyPassword
 } from '$lib/server/auth.js';
@@ -22,6 +24,7 @@ export async function POST({ request, platform, cookies, url, getClientAddress }
 	const email = normalizeEmail(typeof body.email === 'string' ? body.email : '');
 	const password = typeof body.password === 'string' ? body.password : '';
 	const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
+	const remember = parseRememberMe(body.rememberMe);
 
 	const human = await verifyTurnstileToken(platform, turnstileToken, getClientAddress());
 	if (!human) {
@@ -40,7 +43,7 @@ export async function POST({ request, platform, cookies, url, getClientAddress }
 	}
 
 	const row = await db
-		.prepare('SELECT id, email, password_hash FROM users WHERE email = ?')
+		.prepare('SELECT id, email, display_name, password_hash FROM users WHERE email = ?')
 		.bind(email)
 		.first();
 
@@ -53,10 +56,14 @@ export async function POST({ request, platform, cookies, url, getClientAddress }
 		return json({ error: 'Invalid email or password.' }, { status: 401 });
 	}
 
-	const sessionId = await createSession(db, /** @type {string} */ (row.id));
-	setSessionCookie(cookies, sessionId, url.protocol === 'https:');
+	const sessionId = await createSession(db, /** @type {string} */ (row.id), remember);
+	setSessionCookie(cookies, sessionId, { secure: url.protocol === 'https:', remember });
 
 	return json({
-		user: { id: /** @type {string} */ (row.id), email: /** @type {string} */ (row.email) }
+		user: publicUser(
+			/** @type {string} */ (row.id),
+			/** @type {string} */ (row.email),
+			/** @type {string | null} */ (row.display_name)
+		)
 	});
 }

@@ -5,6 +5,8 @@ import {
 	isValidEmail,
 	isValidPassword,
 	normalizeEmail,
+	parseRememberMe,
+	publicUser,
 	setSessionCookie
 } from '$lib/server/auth.js';
 import { EMPTY_PAYLOAD, getDb } from '$lib/server/db.js';
@@ -23,6 +25,7 @@ export async function POST({ request, platform, cookies, url, getClientAddress }
 	const password = typeof body.password === 'string' ? body.password : '';
 	const passwordConfirm = typeof body.passwordConfirm === 'string' ? body.passwordConfirm : '';
 	const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : '';
+	const remember = parseRememberMe(body.rememberMe);
 
 	const human = await verifyTurnstileToken(platform, turnstileToken, getClientAddress());
 	if (!human) {
@@ -57,15 +60,17 @@ export async function POST({ request, platform, cookies, url, getClientAddress }
 
 	await db.batch([
 		db
-			.prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)')
-			.bind(id, email, passwordHash, now),
+			.prepare(
+				'INSERT INTO users (id, email, password_hash, created_at, display_name) VALUES (?, ?, ?, ?, ?)'
+			)
+			.bind(id, email, passwordHash, now, null),
 		db
 			.prepare('INSERT INTO user_data (user_id, payload, updated_at) VALUES (?, ?, ?)')
 			.bind(id, EMPTY_PAYLOAD, now)
 	]);
 
-	const sessionId = await createSession(db, id);
-	setSessionCookie(cookies, sessionId, url.protocol === 'https:');
+	const sessionId = await createSession(db, id, remember);
+	setSessionCookie(cookies, sessionId, { secure: url.protocol === 'https:', remember });
 
-	return json({ user: { id, email } });
+	return json({ user: publicUser(id, email, null) });
 }

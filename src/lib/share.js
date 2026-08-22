@@ -95,6 +95,26 @@ function layoutChips(ctx, labels, maxWidth, chipH, gapX, gapY, padX, font) {
 }
 
 /**
+ * Shrinks the money font until `text` fits within `maxWidth`, so the hero
+ * amount stays legible instead of overflowing the card on large totals.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {string} text
+ * @param {number} maxWidth
+ * @param {number} startSize
+ * @param {number} minSize
+ * @returns {number}
+ */
+function fitMoneySize(ctx, text, maxWidth, startSize, minSize) {
+	let size = startSize;
+	while (size > minSize) {
+		ctx.font = moneyFont(800, size);
+		if (ctx.measureText(text).width <= maxWidth) break;
+		size -= 2;
+	}
+	return size;
+}
+
+/**
  * @param {HTMLCanvasElement} canvas
  * @param {{ event: EventRecord, date: string }} opts
  * @returns {string}
@@ -106,38 +126,40 @@ export function generateShareImage(canvas, { event, date }) {
 	const names = event.participants.map((p) => titleCase(p.name));
 	const payerRows = getPayerBreakdown(event, totalFee, 0);
 
-	const W = 800;
-	const PAD = 40;
+	// Narrower, denser canvas tuned for reading on a phone screen (chat
+	// previews, quick screenshots) rather than a desktop-sized poster.
+	const W = 620;
+	const PAD = 20;
 	const CW = W - PAD * 2;
-	const CP = 24;
+	const CP = 16;
 	const INNER_W = CW - CP * 2;
+	const GAP = 12;
 
 	canvas.width = W;
 	canvas.height = 200;
 	const ctx = canvas.getContext('2d');
 	if (!ctx) return '';
 
-	const HEADER_H = 104;
-	const HIGHLIGHT_H = 116;
-	const courtRowH = 30;
+	const HEADER_H = 54;
+	const HIGHLIGHT_H = 156;
+	const courtRowH = 24;
 	const courtsCardH =
-		CP + 22 + 16 + (event.courts.length > 0 ? event.courts.length * courtRowH : courtRowH) + 16 + 24 + CP;
-	const payerRowH = 30;
-	const payerCardH = payerRows ? CP + 22 + 16 + payerRows.length * payerRowH + CP : 0;
+		CP + 18 + 12 + (event.courts.length > 0 ? event.courts.length * courtRowH : courtRowH) + 12 + 22 + CP;
+	const payerRowH = 24;
+	const payerCardH = payerRows ? CP + 18 + 12 + payerRows.length * payerRowH + CP : 0;
 
 	const chips = layoutChips(
 		ctx,
 		names.length ? names : ['No participants yet'],
 		INNER_W,
-		34,
-		10,
-		10,
-		14,
-		shareFont(600, 14)
+		27,
+		7,
+		7,
+		11,
+		shareFont(600, 12.5)
 	);
-	const participantsCardH = CP + 22 + 16 + chips.totalHeight + CP;
+	const participantsCardH = CP + 18 + 12 + chips.totalHeight + CP;
 
-	const GAP = 20;
 	const totalHeight =
 		HEADER_H +
 		GAP +
@@ -148,7 +170,7 @@ export function generateShareImage(canvas, { event, date }) {
 		(payerRows ? payerCardH + GAP : 0) +
 		participantsCardH +
 		GAP +
-		30;
+		22;
 
 	canvas.width = W;
 	canvas.height = totalHeight;
@@ -156,80 +178,93 @@ export function generateShareImage(canvas, { event, date }) {
 	ctx.fillStyle = SHARE_COLORS.bg;
 	ctx.fillRect(0, 0, W, totalHeight);
 
+	// Compact single-line header: badge, title, date all on one row.
 	ctx.fillStyle = SHARE_COLORS.emerald700;
 	ctx.fillRect(0, 0, W, HEADER_H);
-	const badgeSize = 52;
+	const badgeSize = 32;
 	const badgeY = (HEADER_H - badgeSize) / 2;
 	ctx.fillStyle = 'rgba(255,255,255,0.16)';
-	roundRect(ctx, PAD, badgeY, badgeSize, badgeSize, 14);
+	roundRect(ctx, PAD, badgeY, badgeSize, badgeSize, 10);
 	ctx.fill();
-	drawPaddleIcon(ctx, PAD + (badgeSize - 26) / 2, badgeY + (badgeSize - 26) / 2, 26, '#ffffff');
+	drawPaddleIcon(ctx, PAD + (badgeSize - 18) / 2, badgeY + (badgeSize - 18) / 2, 18, '#ffffff');
 
-	const textX = PAD + badgeSize + 16;
 	ctx.textAlign = 'left';
 	ctx.fillStyle = '#ffffff';
-	ctx.font = shareFont(800, 25);
-	ctx.fillText('Pickleball Court Fees', textX, HEADER_H / 2 - 4);
-	ctx.font = shareFont(500, 15);
-	ctx.fillStyle = 'rgba(255,255,255,0.85)';
-	ctx.fillText(formatDateLabel(date), textX, HEADER_H / 2 + 20);
+	ctx.font = shareFont(800, 16);
+	ctx.fillText('Pickleball Court Fees', PAD + badgeSize + 12, HEADER_H / 2 + 5);
 
-	let y = HEADER_H + GAP;
-	ctx.fillStyle = SHARE_COLORS.emerald700;
-	roundRect(ctx, PAD, y, CW, HIGHLIGHT_H, 16);
-	ctx.fill();
-
-	ctx.fillStyle = 'rgba(255,255,255,0.85)';
-	ctx.font = shareFont(600, 14);
-	ctx.fillText('AMOUNT PER PERSON', PAD + CP, y + 38);
-	ctx.fillStyle = '#ffffff';
-	ctx.font = moneyFont(700, 44);
-	ctx.fillText(formatCurrency(perPerson), PAD + CP, y + 86);
-
-	const statX = PAD + CW - CP;
 	ctx.textAlign = 'right';
 	ctx.fillStyle = 'rgba(255,255,255,0.85)';
-	ctx.font = shareFont(600, 13);
-	ctx.fillText('TOTAL POOL', statX, y + 38);
+	ctx.font = shareFont(600, 12);
+	ctx.fillText(formatDateLabel(date), PAD + CW, HEADER_H / 2 + 4);
+	ctx.textAlign = 'left';
+
+	// Hero card: the amount each person owes is the whole point of the
+	// image, so it gets the biggest, boldest, most central treatment.
+	let y = HEADER_H + GAP;
+	ctx.fillStyle = SHARE_COLORS.emerald700;
+	roundRect(ctx, PAD, y, CW, HIGHLIGHT_H, 18);
+	ctx.fill();
+
+	ctx.textAlign = 'center';
+	ctx.fillStyle = 'rgba(255,255,255,0.8)';
+	ctx.font = shareFont(700, 13);
+	ctx.fillText('AMOUNT PER PERSON', W / 2, y + 30);
+
+	const amountText = formatCurrency(perPerson);
+	const amountMaxWidth = CW - CP * 2;
+	const amountSize = fitMoneySize(ctx, amountText, amountMaxWidth, 68, 36);
+	ctx.font = moneyFont(800, amountSize);
 	ctx.fillStyle = '#ffffff';
-	ctx.font = moneyFont(700, 22);
-	ctx.fillText(formatCurrency(totalFee), statX, y + 64);
-	ctx.fillStyle = 'rgba(255,255,255,0.85)';
-	ctx.font = shareFont(600, 13);
-	ctx.fillText('PARTICIPANTS', statX, y + 90);
+	ctx.fillText(amountText, W / 2, y + 92);
+
+	ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.moveTo(PAD + CP, y + 116);
+	ctx.lineTo(PAD + CW - CP, y + 116);
+	ctx.stroke();
+
+	const halfX1 = PAD + CW / 4;
+	const halfX2 = PAD + (CW * 3) / 4;
+	ctx.fillStyle = 'rgba(255,255,255,0.7)';
+	ctx.font = shareFont(600, 11);
+	ctx.fillText('TOTAL POOL', halfX1, y + 136);
+	ctx.fillText('PARTICIPANTS', halfX2, y + 136);
 	ctx.fillStyle = '#ffffff';
-	ctx.font = shareFont(700, 20);
-	ctx.fillText(String(count), statX, y + 112);
+	ctx.font = shareFont(700, 15);
+	ctx.fillText(formatCurrency(totalFee), halfX1, y + 152);
+	ctx.fillText(String(count), halfX2, y + 152);
 	ctx.textAlign = 'left';
 
 	y += HIGHLIGHT_H + GAP;
 	ctx.fillStyle = SHARE_COLORS.surface;
-	roundRect(ctx, PAD, y, CW, courtsCardH, 16);
+	roundRect(ctx, PAD, y, CW, courtsCardH, 14);
 	ctx.fill();
 	ctx.strokeStyle = SHARE_COLORS.ink200;
 	ctx.lineWidth = 1.5;
-	roundRect(ctx, PAD, y, CW, courtsCardH, 16);
+	roundRect(ctx, PAD, y, CW, courtsCardH, 14);
 	ctx.stroke();
 
-	let cy = y + CP + 6;
+	let cy = y + CP + 4;
 	ctx.fillStyle = SHARE_COLORS.ink900;
-	ctx.font = shareFont(700, 16);
+	ctx.font = shareFont(700, 14);
 	ctx.fillText('Court Fees', PAD + CP, cy);
-	cy += 30;
+	cy += 24;
 
 	if (event.courts.length === 0) {
 		ctx.fillStyle = SHARE_COLORS.ink500;
-		ctx.font = shareFont(500, 14);
+		ctx.font = shareFont(500, 13);
 		ctx.fillText('No courts added', PAD + CP, cy);
 		cy += courtRowH;
 	} else {
 		event.courts.forEach((c, idx) => {
 			ctx.fillStyle = SHARE_COLORS.ink600;
-			ctx.font = shareFont(500, 15);
+			ctx.font = shareFont(500, 13);
 			ctx.textAlign = 'left';
 			ctx.fillText(`Court ${idx + 1}`, PAD + CP, cy);
 			ctx.fillStyle = SHARE_COLORS.ink900;
-			ctx.font = moneyFont(700, 15);
+			ctx.font = moneyFont(700, 13);
 			ctx.textAlign = 'right';
 			ctx.fillText(formatCurrency(c.fee), PAD + CW - CP, cy);
 			ctx.textAlign = 'left';
@@ -237,21 +272,21 @@ export function generateShareImage(canvas, { event, date }) {
 		});
 	}
 
-	cy += 4;
+	cy += 2;
 	ctx.strokeStyle = SHARE_COLORS.ink200;
 	ctx.lineWidth = 1;
 	ctx.beginPath();
 	ctx.moveTo(PAD + CP, cy);
 	ctx.lineTo(PAD + CW - CP, cy);
 	ctx.stroke();
-	cy += 26;
+	cy += 20;
 
 	ctx.fillStyle = SHARE_COLORS.ink900;
-	ctx.font = shareFont(700, 16);
+	ctx.font = shareFont(700, 14);
 	ctx.textAlign = 'left';
 	ctx.fillText('Total', PAD + CP, cy);
 	ctx.fillStyle = SHARE_COLORS.emerald700;
-	ctx.font = moneyFont(700, 17);
+	ctx.font = moneyFont(700, 15);
 	ctx.textAlign = 'right';
 	ctx.fillText(formatCurrency(totalFee), PAD + CW - CP, cy);
 	ctx.textAlign = 'left';
@@ -259,26 +294,26 @@ export function generateShareImage(canvas, { event, date }) {
 	y += courtsCardH + GAP;
 	if (payerRows) {
 		ctx.fillStyle = SHARE_COLORS.surface;
-		roundRect(ctx, PAD, y, CW, payerCardH, 16);
+		roundRect(ctx, PAD, y, CW, payerCardH, 14);
 		ctx.fill();
 		ctx.strokeStyle = SHARE_COLORS.ink200;
 		ctx.lineWidth = 1.5;
-		roundRect(ctx, PAD, y, CW, payerCardH, 16);
+		roundRect(ctx, PAD, y, CW, payerCardH, 14);
 		ctx.stroke();
 
-		let py = y + CP + 6;
+		let py = y + CP + 4;
 		ctx.fillStyle = SHARE_COLORS.ink900;
-		ctx.font = shareFont(700, 16);
+		ctx.font = shareFont(700, 14);
 		ctx.fillText('Paid By', PAD + CP, py);
-		py += 30;
+		py += 24;
 
 		payerRows.forEach((r) => {
 			ctx.fillStyle = SHARE_COLORS.ink600;
-			ctx.font = shareFont(500, 15);
+			ctx.font = shareFont(500, 13);
 			ctx.textAlign = 'left';
 			ctx.fillText(r.payer, PAD + CP, py);
 			ctx.fillStyle = SHARE_COLORS.ink900;
-			ctx.font = moneyFont(700, 15);
+			ctx.font = moneyFont(700, 13);
 			ctx.textAlign = 'right';
 			ctx.fillText(formatCurrency(r.feeSum), PAD + CW - CP, py);
 			ctx.textAlign = 'left';
@@ -289,40 +324,40 @@ export function generateShareImage(canvas, { event, date }) {
 	}
 
 	ctx.fillStyle = SHARE_COLORS.surface;
-	roundRect(ctx, PAD, y, CW, participantsCardH, 16);
+	roundRect(ctx, PAD, y, CW, participantsCardH, 14);
 	ctx.fill();
 	ctx.strokeStyle = SHARE_COLORS.ink200;
 	ctx.lineWidth = 1.5;
-	roundRect(ctx, PAD, y, CW, participantsCardH, 16);
+	roundRect(ctx, PAD, y, CW, participantsCardH, 14);
 	ctx.stroke();
 
 	ctx.fillStyle = SHARE_COLORS.ink900;
-	ctx.font = shareFont(700, 16);
-	ctx.fillText(`Participants (${count})`, PAD + CP, y + CP + 6);
+	ctx.font = shareFont(700, 14);
+	ctx.fillText(`Participants (${count})`, PAD + CP, y + CP + 4);
 
 	const chipsOriginX = PAD + CP;
-	const chipsOriginY = y + CP + 6 + 32;
-	ctx.font = shareFont(600, 14);
+	const chipsOriginY = y + CP + 4 + 24;
+	ctx.font = shareFont(600, 12.5);
 	const chipLabels = names.length ? names : ['No participants yet'];
 	chips.positions.forEach((pos, idx) => {
 		const chipX = chipsOriginX + pos.x;
 		const chipY = chipsOriginY + pos.y;
 		ctx.fillStyle = SHARE_COLORS.emerald50;
-		roundRect(ctx, chipX, chipY, pos.w, 34, 17);
+		roundRect(ctx, chipX, chipY, pos.w, 27, 13.5);
 		ctx.fill();
 		ctx.strokeStyle = SHARE_COLORS.emerald100;
 		ctx.lineWidth = 1.5;
-		roundRect(ctx, chipX, chipY, pos.w, 34, 17);
+		roundRect(ctx, chipX, chipY, pos.w, 27, 13.5);
 		ctx.stroke();
 		ctx.fillStyle = SHARE_COLORS.emerald800;
-		ctx.fillText(chipLabels[idx], chipX + 14, chipY + 22);
+		ctx.fillText(chipLabels[idx], chipX + 11, chipY + 18);
 	});
 
 	y += participantsCardH + GAP;
 	ctx.textAlign = 'center';
 	ctx.fillStyle = SHARE_COLORS.ink500;
-	ctx.font = shareFont(500, 12);
-	ctx.fillText('Generated with Pickleball Fee Splitter', W / 2, y + 6);
+	ctx.font = shareFont(500, 11);
+	ctx.fillText('Generated with Pickleball Fee Splitter', W / 2, y + 4);
 	ctx.textAlign = 'left';
 
 	return canvas.toDataURL('image/png');

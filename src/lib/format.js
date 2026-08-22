@@ -22,6 +22,17 @@ export function formatCurrency(amount) {
 	return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * @param {string} email
+ * @param {string | null | undefined} displayName
+ */
+export function formatAccountName(email, displayName) {
+	const name = (displayName || '').trim();
+	if (name) return name;
+	const local = email.split('@')[0] || email;
+	return local;
+}
+
 /** @param {string} dateStr */
 export function formatDateLabel(dateStr) {
 	const d = new Date(dateStr + 'T00:00:00');

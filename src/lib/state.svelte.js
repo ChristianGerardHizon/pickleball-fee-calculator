@@ -5,7 +5,7 @@ import { titleCase } from './format.js';
  * @typedef {import('./storage.js').AppData} AppData
  * @typedef {import('./storage.js').EventRecord} EventRecord
  * @typedef {{ name: string, selected: boolean }} RosterEntry
- * @typedef {{ id: string, email: string }} SessionUser
+ * @typedef {{ id: string, email: string, displayName: string | null }} SessionUser
  */
 
 export const app = $state({
@@ -18,7 +18,7 @@ export const app = $state({
 	currentDate: null,
 	/** @type {RosterEntry[]} */
 	pendingRoster: [],
-	/** @type {'gate' | 'roster' | 'main'} */
+	/** @type {'gate' | 'roster' | 'main' | 'profile'} */
 	screen: 'gate',
 	gateDate: new Date().toISOString().slice(0, 10),
 	/** @type {'idle' | 'saving' | 'saved' | 'error'} */
@@ -79,21 +79,30 @@ export async function bootSession() {
 
 /**
  * @param {'login' | 'register'} mode
- * @param {{ email: string, password: string, passwordConfirm?: string, turnstileToken: string }} creds
+ * @param {{
+ *   email: string,
+ *   password: string,
+ *   passwordConfirm?: string,
+ *   turnstileToken: string,
+ *   rememberMe?: boolean
+ * }} creds
  */
 export async function authenticate(mode, creds) {
+	const rememberMe = creds.rememberMe !== false;
 	const payload =
 		mode === 'register'
 			? {
 					email: creds.email,
 					password: creds.password,
 					passwordConfirm: creds.passwordConfirm ?? '',
-					turnstileToken: creds.turnstileToken
+					turnstileToken: creds.turnstileToken,
+					rememberMe
 				}
 			: {
 					email: creds.email,
 					password: creds.password,
-					turnstileToken: creds.turnstileToken
+					turnstileToken: creds.turnstileToken,
+					rememberMe
 				};
 	const res = await fetch(mode === 'register' ? '/api/auth/register' : '/api/auth/login', {
 		method: 'POST',
@@ -106,6 +115,35 @@ export async function authenticate(mode, creds) {
 	}
 	app.sessionUser = body.user;
 	await loadFromServer();
+}
+
+/** @param {string} displayName */
+export async function updateProfile(displayName) {
+	const res = await fetch('/api/auth/profile', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ displayName })
+	});
+	const body = await res.json().catch(() => ({}));
+	if (!res.ok) {
+		throw new Error(typeof body.error === 'string' ? body.error : 'Could not update profile.');
+	}
+	app.sessionUser = body.user;
+}
+
+/**
+ * @param {{ currentPassword: string, newPassword: string, newPasswordConfirm: string }} payload
+ */
+export async function changePassword(payload) {
+	const res = await fetch('/api/auth/password', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	});
+	const body = await res.json().catch(() => ({}));
+	if (!res.ok) {
+		throw new Error(typeof body.error === 'string' ? body.error : 'Could not change password.');
+	}
 }
 
 export async function logout() {
@@ -130,6 +168,10 @@ export async function logout() {
 export function getCurrentEvent() {
 	if (!app.currentDate) return null;
 	return app.data.events[app.currentDate] ?? null;
+}
+
+export function getEventHistoryDates() {
+	return Object.keys(app.data.events).sort().reverse();
 }
 
 export function getPreviousEventDates() {
@@ -170,6 +212,15 @@ export function createEventWithParticipants(date, names) {
 	};
 }
 
+/** @param {string} date */
+export function deleteEvent(date) {
+	delete app.data.events[date];
+	if (app.currentDate === date) {
+		app.currentDate = null;
+	}
+	persist();
+}
+
 /** @param {string[]} names */
 export function mergeNamesIntoMaster(names) {
 	names.forEach((name) => {
@@ -191,6 +242,10 @@ export function addParticipantsToEvent(names) {
 export function showGateScreen() {
 	app.screen = 'gate';
 	app.pendingRoster = [];
+}
+
+export function showProfileScreen() {
+	app.screen = 'profile';
 }
 
 /** @param {string} date */
