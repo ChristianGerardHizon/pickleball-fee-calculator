@@ -57,12 +57,25 @@ npx wrangler dev
 
 ## Deploying
 
-Use the Cloudflare Git integration or `npx wrangler deploy`.
+Production URL: https://pickleball-fee-calculator.pages.dev/
 
-- Build command: `npm run build`
-- Output directory (Pages): `.svelte-kit/cloudflare`
-- Compatibility flag: `nodejs_als`
-- D1 binding name: `DB`
-- Env: `PUBLIC_TURNSTILE_SITE_KEY` (build + runtime), `TURNSTILE_SECRET_KEY` (secret, server only)
+Pushes to `main` deploy via GitHub Actions (`.github/workflows/deploy-cloudflare-pages.yml`).
+
+Required GitHub repository secrets:
+
+- `CLOUDFLARE_API_TOKEN` — token with **Account → Cloudflare Pages → Edit** and **Account → D1 → Edit**
+- `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account id
+
+Optional repository variable:
+
+- `PUBLIC_TURNSTILE_SITE_KEY` — production Turnstile site key (defaults to Cloudflare’s dummy always-pass key)
+
+Also set `TURNSTILE_SECRET_KEY` as a Pages/Wrangler secret (server only), bind D1 as `DB`, and enable compatibility flag `nodejs_als`.
+
+Manual deploy from a machine with Wrangler auth:
+
+```sh
+npm run deploy
+```
 
 Apply remote migrations before (or as part of) the first deploy.
