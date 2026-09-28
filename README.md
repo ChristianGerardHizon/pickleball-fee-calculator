@@ -26,7 +26,7 @@ Then open the URL Vite prints (usually `http://localhost:5173`). Vite uses the D
 
 Local Turnstile uses Cloudflare’s dummy **invisible always-pass** keys (`PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000BB` and `TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` in `.env.development` / `.dev.vars`). Create an Invisible widget in the Cloudflare dashboard for production and set the real keys as a Pages/Workers env var (site key) and a Wrangler secret (secret key). Do not put the secret in client code.
 
-If you already registered with a username before this change, wipe the local D1 (or delete those users) and apply migrations again — logins are email-only now.
+If you already registered with a username before email-only auth, wipe the local D1 (or delete those users) and apply migrations again.
 
 ## Data storage
 
@@ -66,10 +66,12 @@ CI workflow: `.github/workflows/deploy-cloudflare-pages.yml` (also supports manu
 
 In the Cloudflare Pages project, keep the **production branch** set to `main` so release deploys become the live `*.pages.dev` site. Staging uses the non-production Pages branch alias `staging`.
 
-Required GitHub repository secrets:
+Required GitHub repository secrets (deploys fail fast if either is missing/invalid):
 
 - `CLOUDFLARE_API_TOKEN` — token with **Account → Cloudflare Pages → Edit** and **Account → D1 → Edit**
 - `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account id
+
+Create a token: https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
 
 Optional repository variable:
 

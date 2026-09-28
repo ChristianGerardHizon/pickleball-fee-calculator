@@ -3,6 +3,9 @@ name: Deploy Cloudflare Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.cursor/**'
   release:
     types: [published]
   workflow_dispatch:
@@ -31,6 +34,22 @@ jobs:
       # Non-production branch `staging` → staging.pickleball-fee-calculator.pages.dev
       DEPLOY_TARGET: ${{ github.event_name == 'release' && 'production' || github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
     steps:
+      - name: Check Cloudflare secrets
+        shell: bash
+        run: |
+          missing=0
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::Missing repo secret CLOUDFLARE_API_TOKEN (Pages Edit + D1 Edit)."
+            missing=1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "::error::Missing repo secret CLOUDFLARE_ACCOUNT_ID."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Resolve Pages branch
         id: target
         shell: bash
