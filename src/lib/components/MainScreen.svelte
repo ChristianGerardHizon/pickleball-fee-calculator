@@ -11,7 +11,9 @@
 		showGateScreen,
 		showProfileScreen
 	} from '$lib/state.svelte.js';
+	import IconCheck from './IconCheck.svelte';
 	import IconPaddle from './IconPaddle.svelte';
+	import IconPencil from './IconPencil.svelte';
 	import IconPlus from './IconPlus.svelte';
 	import IconX from './IconX.svelte';
 	import ShareModal from './ShareModal.svelte';
@@ -22,12 +24,22 @@
 	let massText = $state('');
 	let quickName = $state('');
 	let shareOpen = $state(false);
+	let masterExpanded = $state(false);
+	let editingMasterIdx = $state(/** @type {number | null} */ (null));
+	let editMasterDraft = $state('');
+
+	const MASTER_PREVIEW = 5;
 
 	const availableMaster = $derived.by(() => {
 		if (!event) return [];
 		const currentNames = new Set(event.participants.map((p) => p.name.toLowerCase()));
 		return app.data.masterList.filter((m) => !currentNames.has(m.toLowerCase()));
 	});
+
+	const visibleMaster = $derived(
+		masterExpanded ? availableMaster : availableMaster.slice(0, MASTER_PREVIEW)
+	);
+	const hiddenMasterCount = $derived(Math.max(0, availableMaster.length - MASTER_PREVIEW));
 
 	function addCourt() {
 		event?.courts.push({ fee: 0, payer: '', name: '' });
@@ -86,8 +98,50 @@
 
 	/** @param {number} idx */
 	function removeMaster(idx) {
+		if (editingMasterIdx === idx) cancelEditMaster();
+		else if (editingMasterIdx !== null && editingMasterIdx > idx) editingMasterIdx -= 1;
 		app.data.masterList.splice(idx, 1);
 		persist();
+	}
+
+	/** @param {number} idx */
+	function startEditMaster(idx) {
+		editingMasterIdx = idx;
+		editMasterDraft = app.data.masterList[idx] ?? '';
+	}
+
+	function cancelEditMaster() {
+		editingMasterIdx = null;
+		editMasterDraft = '';
+	}
+
+	function saveEditMaster() {
+		if (editingMasterIdx === null) return;
+		const trimmed = editMasterDraft.trim();
+		if (!trimmed) return;
+		const name = titleCase(trimmed);
+		const idx = editingMasterIdx;
+		const lower = name.toLowerCase();
+		const dup = app.data.masterList.some((m, i) => i !== idx && m.toLowerCase() === lower);
+		if (dup) return;
+		if (app.data.masterList[idx] === name) {
+			cancelEditMaster();
+			return;
+		}
+		app.data.masterList[idx] = name;
+		cancelEditMaster();
+		persist();
+	}
+
+	/** @param {KeyboardEvent} e */
+	function onEditMasterKeydown(e) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			saveEditMaster();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEditMaster();
+		}
 	}
 
 	/**
@@ -341,11 +395,20 @@
 				<div class="chips">
 					{#if availableMaster.length > 0}
 						<div class="chips-label">Add from master list:</div>
-						{#each availableMaster as name (name)}
+						{#each visibleMaster as name (name)}
 							<button type="button" class="chip" onclick={() => addFromMaster(name)}>
 								+ {titleCase(name)}
 							</button>
 						{/each}
+						{#if hiddenMasterCount > 0}
+							<button
+								type="button"
+								class="chip chip-more"
+								onclick={() => (masterExpanded = !masterExpanded)}
+							>
+								{masterExpanded ? 'Show less' : `Show more (${hiddenMasterCount})`}
+							</button>
+						{/if}
 					{/if}
 				</div>
 
@@ -524,21 +587,60 @@
 				Manage Master List
 			</summary>
 			<p class="hint">
-				This is the full list of members remembered across events. Removing someone here only
-				affects future events.
+				This is the full list of members remembered across events. Editing or removing someone
+				here only affects future events.
 			</p>
 			<div class="master-manage-list">
-				{#each app.data.masterList as name, idx (name)}
+				{#each app.data.masterList as name, idx (name + '-' + idx)}
 					<div class="master-row">
-						<span>{titleCase(name)}</span>
-						<button
-							type="button"
-							class="remove-btn"
-							aria-label="Remove from master list"
-							onclick={() => removeMaster(idx)}
-						>
-							<IconX />
-						</button>
+						{#if editingMasterIdx === idx}
+							<input
+								type="text"
+								class="master-edit-input"
+								bind:value={editMasterDraft}
+								aria-label="Edit master list name"
+								autofocus
+								onkeydown={onEditMasterKeydown}
+							/>
+							<div class="master-row-actions">
+								<button
+									type="button"
+									class="edit-btn save-btn"
+									aria-label="Save name"
+									onclick={saveEditMaster}
+								>
+									<IconCheck />
+								</button>
+								<button
+									type="button"
+									class="remove-btn"
+									aria-label="Cancel edit"
+									onclick={cancelEditMaster}
+								>
+									<IconX />
+								</button>
+							</div>
+						{:else}
+							<span>{titleCase(name)}</span>
+							<div class="master-row-actions">
+								<button
+									type="button"
+									class="edit-btn"
+									aria-label="Edit {titleCase(name)}"
+									onclick={() => startEditMaster(idx)}
+								>
+									<IconPencil />
+								</button>
+								<button
+									type="button"
+									class="remove-btn"
+									aria-label="Remove from master list"
+									onclick={() => removeMaster(idx)}
+								>
+									<IconX />
+								</button>
+							</div>
+						{/if}
 					</div>
 				{/each}
 			</div>
