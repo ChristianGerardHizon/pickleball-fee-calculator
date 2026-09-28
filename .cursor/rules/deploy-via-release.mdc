@@ -1,0 +1,32 @@
+---
+description: Production deploy is done via git tag + GitHub Release (not direct wrangler)
+alwaysApply: true
+---
+
+# Deploy via tag and GitHub Release
+
+When the user asks to **deploy**, **ship to production**, or **release to prod**:
+
+1. Do **not** run `wrangler pages deploy` / `npm run deploy:production` yourself unless they explicitly ask for a manual Wrangler deploy.
+2. Ensure the commit to ship is on `main` and pushed.
+3. Create an **annotated git tag** and a **GitHub Release** from that tag. Publishing the release triggers the Cloudflare Pages **production** workflow → https://pickleball-fee-calculator.pages.dev/
+
+```bash
+# Example: next patch from latest tag, or v0.1.0 if none exist
+git checkout main
+git pull origin main
+
+TAG=v0.1.0   # bump appropriately (semver)
+
+git tag -a "$TAG" -m "Release $TAG"
+git push origin "$TAG"
+
+gh release create "$TAG" --title "$TAG" --notes "Production deploy for $TAG."
+```
+
+## Do not confuse with staging
+
+- Merge / push to `main` → **staging** only (`staging.pickleball-fee-calculator.pages.dev`).
+- **Production** only happens when a GitHub Release is published.
+
+If they only want staging, merge/push to `main` — do not create a tag or release.
