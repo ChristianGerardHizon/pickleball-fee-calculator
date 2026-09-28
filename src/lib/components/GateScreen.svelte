@@ -11,6 +11,7 @@
 		showProfileScreen
 	} from '$lib/state.svelte.js';
 	import { createInvisibleTurnstile } from '$lib/turnstile.js';
+	import EventHistoryCalendar from './EventHistoryCalendar.svelte';
 	import IconPaddle from './IconPaddle.svelte';
 	import IconX from './IconX.svelte';
 
@@ -23,6 +24,8 @@
 	let showPassword = $state(false);
 	/** @type {'login' | 'register'} */
 	let mode = $state('login');
+	let historyExpanded = $state(false);
+	let historyQuery = $state('');
 
 	/** @type {HTMLDivElement | undefined} */
 	let turnstileHost = $state(/** @type {HTMLDivElement | undefined} */ (undefined));
@@ -30,6 +33,24 @@
 	let turnstile = null;
 
 	const historyDates = $derived(getEventHistoryDates());
+
+	const filteredDates = $derived.by(() => {
+		const q = historyQuery.trim().toLowerCase();
+		if (!historyExpanded || !q) return historyDates;
+		return historyDates.filter(
+			(date) =>
+				date.toLowerCase().includes(q) || formatDateLabel(date).toLowerCase().includes(q)
+		);
+	});
+
+	const visibleDates = $derived(
+		historyExpanded ? filteredDates : historyDates.slice(0, 5)
+	);
+
+	function toggleHistoryExpanded() {
+		historyExpanded = !historyExpanded;
+		if (!historyExpanded) historyQuery = '';
+	}
 
 	$effect(() => {
 		if (turnstileHost && !turnstile) {
@@ -215,30 +236,52 @@
 			{#if historyDates.length === 0}
 				<p class="history-empty">No events yet. Pick a date below to start one.</p>
 			{:else}
-				<ul class="history-list">
-					{#each historyDates as date (date)}
-						{@const event = app.data.events[date]}
-						{@const totals = event ? getEventTotals(event) : null}
-						<li class="history-row">
-							<button type="button" class="history-open" onclick={() => openEvent(date)}>
-								<span class="history-date">{formatDateLabel(date)}</span>
-								<span class="history-meta">
-									{totals
-										? `${totals.count} ${totals.count === 1 ? 'player' : 'players'} · ${formatCurrency(totals.remaining)} remaining`
-										: ''}
-								</span>
-							</button>
-							<button
-								type="button"
-								class="remove-btn history-delete"
-								aria-label="Delete event {formatDateLabel(date)}"
-								onclick={() => onDeleteEvent(date)}
-							>
-								<IconX />
-							</button>
-						</li>
-					{/each}
-				</ul>
+				{#if historyExpanded}
+					<label class="history-search-label" for="history-search">Search events</label>
+					<input
+						type="search"
+						id="history-search"
+						class="history-search"
+						placeholder="Search by date…"
+						bind:value={historyQuery}
+					/>
+					<EventHistoryCalendar eventDates={historyDates} onSelect={openEvent} />
+				{/if}
+
+				{#if visibleDates.length === 0}
+					<p class="history-empty">No events match your search.</p>
+				{:else}
+					<ul class="history-list">
+						{#each visibleDates as date (date)}
+							{@const event = app.data.events[date]}
+							{@const totals = event ? getEventTotals(event) : null}
+							<li class="history-row">
+								<button type="button" class="history-open" onclick={() => openEvent(date)}>
+									<span class="history-date">{formatDateLabel(date)}</span>
+									<span class="history-meta">
+										{totals
+											? `${totals.count} ${totals.count === 1 ? 'player' : 'players'} · ${formatCurrency(totals.remaining)} remaining`
+											: ''}
+									</span>
+								</button>
+								<button
+									type="button"
+									class="remove-btn history-delete"
+									aria-label="Delete event {formatDateLabel(date)}"
+									onclick={() => onDeleteEvent(date)}
+								>
+									<IconX />
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				{#if historyDates.length > 5}
+					<button type="button" class="history-more" onclick={toggleHistoryExpanded}>
+						{historyExpanded ? 'Show less' : 'Show more'}
+					</button>
+				{/if}
 			{/if}
 
 			<label for="gate-date">New event date</label>

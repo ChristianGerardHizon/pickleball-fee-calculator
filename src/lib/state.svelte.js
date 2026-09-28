@@ -206,8 +206,9 @@ export function setPendingRosterFromNames(names) {
  */
 export function createEventWithParticipants(date, names) {
 	app.data.events[date] = {
-		courts: [{ fee: 0, payer: '' }],
-		participants: names.map((name) => ({ name, paid: false })),
+		courts: [{ fee: 0, payer: '', name: '' }],
+		additionalFees: [],
+		participants: names.map((name) => ({ name, paid: false, fixedAmount: null })),
 		createdAt: new Date().toISOString()
 	};
 }
@@ -235,7 +236,7 @@ export function addParticipantsToEvent(names) {
 	if (!event) return;
 	names.forEach((name) => {
 		const exists = event.participants.some((p) => p.name.toLowerCase() === name.toLowerCase());
-		if (!exists) event.participants.push({ name, paid: false });
+		if (!exists) event.participants.push({ name, paid: false, fixedAmount: null });
 	});
 }
 

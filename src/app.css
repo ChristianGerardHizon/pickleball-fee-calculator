@@ -313,6 +313,134 @@ body.modal-open { overflow: hidden; }
   align-self: center;
 }
 
+.history-search-label {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-search {
+  margin-bottom: 12px;
+}
+
+.history-more {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: var(--emerald-700);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+}
+
+.history-more:hover {
+  color: var(--emerald-800);
+}
+
+.event-cal {
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+}
+
+.event-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.event-cal-month {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.event-cal-nav {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink-600);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.event-cal-nav:hover {
+  border-color: var(--emerald-200);
+  color: var(--emerald-700);
+  background: var(--emerald-50);
+}
+
+.event-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.event-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.event-cal-pad {
+  aspect-ratio: 1;
+}
+
+.event-cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  background: transparent;
+}
+
+.event-cal-day.muted {
+  opacity: 0.35;
+  font-weight: 500;
+}
+
+.event-cal-day.has-event {
+  background: var(--emerald-50);
+  color: var(--emerald-800);
+  border: 1px solid var(--emerald-200);
+  cursor: pointer;
+}
+
+.event-cal-day.has-event:hover {
+  background: var(--emerald-100);
+  border-color: var(--emerald-600);
+  color: var(--emerald-900);
+}
+
 .field-error {
   margin: 6px 0 0;
   color: var(--danger-700);
@@ -540,6 +668,7 @@ body.modal-open { overflow: hidden; }
   grid-template-columns: 1fr;
   gap: 16px;
   margin-bottom: 16px;
+  align-items: start;
 }
 
 @media (min-width: 720px) {
@@ -702,43 +831,66 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
+.court-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
 .court-row {
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label fee remove"
+    "payer payer remove";
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: center;
+  padding: 12px 0;
   border-bottom: 1px solid var(--ink-100);
+}
+
+.court-row:first-child {
+  padding-top: 0;
 }
 
 .court-row:last-child {
   padding-bottom: 0;
-  margin-bottom: 0;
   border-bottom: none;
 }
 
-.court-row-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.court-label {
-  flex: 0 0 66px;
-  font-size: 0.85rem;
+input.court-label {
+  grid-area: label;
+  width: 100%;
+  min-width: 0;
   font-weight: 600;
-  color: var(--ink-600);
 }
 
 .court-fee-input {
-  flex: 1;
+  grid-area: fee;
+  width: 100%;
   min-width: 0;
 }
 
+.court-row .remove-btn {
+  grid-area: remove;
+  align-self: center;
+}
+
 .court-payer-input {
+  grid-area: payer;
+  width: 100%;
+  min-width: 0;
   color: var(--ink-600);
 }
 
 .court-payer-input::placeholder {
   color: var(--ink-500);
+}
+
+.add-court-btn {
+  width: 100%;
 }
 
 .remove-btn {
@@ -830,7 +982,7 @@ a:focus-visible,
 .participant-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-height: 48px;
   padding: 6px 6px 6px 12px;
   border: 1.5px solid var(--ink-200);
@@ -844,6 +996,34 @@ a:focus-visible,
 .participant-row.paid {
   background: var(--emerald-50);
   border-color: var(--emerald-200);
+}
+
+.participant-owed {
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-600);
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+  text-align: right;
+}
+
+.participant-row.paid .participant-owed {
+  color: var(--emerald-800);
+}
+
+.participant-fixed {
+  flex: none;
+  width: 5.5rem;
+  padding: 8px 8px;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.participant-fixed::placeholder {
+  color: var(--ink-500);
+  font-weight: 500;
+  text-align: center;
 }
 
 .paid-badge {
@@ -931,6 +1111,12 @@ a:focus-visible,
   word-break: break-word;
 }
 
+.fixed-amounts-note {
+  margin: -8px 0 14px;
+  font-size: 0.85rem;
+  color: var(--ink-500);
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -963,6 +1149,29 @@ a:focus-visible,
   font-weight: 700;
   color: var(--ink-900);
   word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+.fee-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 14px;
+}
+
+.fee-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-600);
+}
+
+.fee-breakdown-row .money {
+  font-weight: 700;
+  color: var(--ink-900);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1173,14 +1382,10 @@ a:focus-visible,
     flex: 1;
   }
 
-  .court-row-main {
-    gap: 8px;
+  .court-row {
+    column-gap: 8px;
   }
 
-  .court-label {
-    flex-basis: 54px;
-    font-size: 0.8rem;
-  }
 
   .modal-content {
     padding: 20px 16px;

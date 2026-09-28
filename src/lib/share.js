@@ -1,5 +1,5 @@
 import { formatCurrency, formatDateLabel, titleCase } from './format.js';
-import { getPayerBreakdown } from './math.js';
+import { getAdditionalFees, getEventTotals, getPayerBreakdown } from './math.js';
 
 /**
  * @typedef {import('./storage.js').EventRecord} EventRecord
@@ -120,10 +120,13 @@ function fitMoneySize(ctx, text, maxWidth, startSize, minSize) {
  * @returns {string}
  */
 export function generateShareImage(canvas, { event, date }) {
-	const totalFee = event.courts.reduce((sum, c) => sum + (Number(c.fee) || 0), 0);
-	const count = event.participants.length;
-	const perPerson = count > 0 ? totalFee / count : 0;
-	const names = event.participants.map((p) => titleCase(p.name));
+	const { totalFee, count, perPerson, courtTotal, extraTotal, hasFixedAmounts, participantAmounts } =
+		getEventTotals(event);
+	const extras = getAdditionalFees(event);
+	const names = participantAmounts.map((p) => {
+		const label = titleCase(p.name);
+		return p.isFixed ? `${label} · ${formatCurrency(p.owed)}` : label;
+	});
 	const payerRows = getPayerBreakdown(event, totalFee, 0);
 
 	// Narrower, denser canvas tuned for reading on a phone screen (chat
@@ -143,8 +146,10 @@ export function generateShareImage(canvas, { event, date }) {
 	const HEADER_H = 54;
 	const HIGHLIGHT_H = 156;
 	const courtRowH = 24;
-	const courtsCardH =
-		CP + 18 + 12 + (event.courts.length > 0 ? event.courts.length * courtRowH : courtRowH) + 12 + 22 + CP;
+	const lineCardH = (/** @type {number} */ rows) =>
+		CP + 18 + 12 + (rows > 0 ? rows * courtRowH : courtRowH) + 12 + 22 + CP;
+	const courtsCardH = lineCardH(event.courts.length);
+	const extrasCardH = extras.length > 0 ? lineCardH(extras.length) : 0;
 	const payerRowH = 24;
 	const payerCardH = payerRows ? CP + 18 + 12 + payerRows.length * payerRowH + CP : 0;
 
@@ -167,6 +172,7 @@ export function generateShareImage(canvas, { event, date }) {
 		GAP +
 		courtsCardH +
 		GAP +
+		(extras.length > 0 ? extrasCardH + GAP : 0) +
 		(payerRows ? payerCardH + GAP : 0) +
 		participantsCardH +
 		GAP +
@@ -209,7 +215,7 @@ export function generateShareImage(canvas, { event, date }) {
 	ctx.textAlign = 'center';
 	ctx.fillStyle = 'rgba(255,255,255,0.8)';
 	ctx.font = shareFont(700, 13);
-	ctx.fillText('AMOUNT PER PERSON', W / 2, y + 30);
+	ctx.fillText(hasFixedAmounts ? 'STANDARD SHARE' : 'AMOUNT PER PERSON', W / 2, y + 30);
 
 	const amountText = formatCurrency(perPerson);
 	const amountMaxWidth = CW - CP * 2;
@@ -262,7 +268,7 @@ export function generateShareImage(canvas, { event, date }) {
 			ctx.fillStyle = SHARE_COLORS.ink600;
 			ctx.font = shareFont(500, 13);
 			ctx.textAlign = 'left';
-			ctx.fillText(`Court ${idx + 1}`, PAD + CP, cy);
+			ctx.fillText(c.name?.trim() || `Court ${idx + 1}`, PAD + CP, cy);
 			ctx.fillStyle = SHARE_COLORS.ink900;
 			ctx.font = moneyFont(700, 13);
 			ctx.textAlign = 'right';
@@ -288,10 +294,59 @@ export function generateShareImage(canvas, { event, date }) {
 	ctx.fillStyle = SHARE_COLORS.emerald700;
 	ctx.font = moneyFont(700, 15);
 	ctx.textAlign = 'right';
-	ctx.fillText(formatCurrency(totalFee), PAD + CW - CP, cy);
+	ctx.fillText(formatCurrency(courtTotal), PAD + CW - CP, cy);
 	ctx.textAlign = 'left';
 
 	y += courtsCardH + GAP;
+	if (extras.length > 0) {
+		ctx.fillStyle = SHARE_COLORS.surface;
+		roundRect(ctx, PAD, y, CW, extrasCardH, 14);
+		ctx.fill();
+		ctx.strokeStyle = SHARE_COLORS.ink200;
+		ctx.lineWidth = 1.5;
+		roundRect(ctx, PAD, y, CW, extrasCardH, 14);
+		ctx.stroke();
+
+		let ey = y + CP + 4;
+		ctx.fillStyle = SHARE_COLORS.ink900;
+		ctx.font = shareFont(700, 14);
+		ctx.fillText('Additional Fees', PAD + CP, ey);
+		ey += 24;
+
+		extras.forEach((f, idx) => {
+			ctx.fillStyle = SHARE_COLORS.ink600;
+			ctx.font = shareFont(500, 13);
+			ctx.textAlign = 'left';
+			ctx.fillText(f.name?.trim() || `Extra ${idx + 1}`, PAD + CP, ey);
+			ctx.fillStyle = SHARE_COLORS.ink900;
+			ctx.font = moneyFont(700, 13);
+			ctx.textAlign = 'right';
+			ctx.fillText(formatCurrency(f.amount), PAD + CW - CP, ey);
+			ctx.textAlign = 'left';
+			ey += courtRowH;
+		});
+
+		ey += 2;
+		ctx.strokeStyle = SHARE_COLORS.ink200;
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(PAD + CP, ey);
+		ctx.lineTo(PAD + CW - CP, ey);
+		ctx.stroke();
+		ey += 20;
+
+		ctx.fillStyle = SHARE_COLORS.ink900;
+		ctx.font = shareFont(700, 14);
+		ctx.textAlign = 'left';
+		ctx.fillText('Total', PAD + CP, ey);
+		ctx.fillStyle = SHARE_COLORS.emerald700;
+		ctx.font = moneyFont(700, 15);
+		ctx.textAlign = 'right';
+		ctx.fillText(formatCurrency(extraTotal), PAD + CW - CP, ey);
+		ctx.textAlign = 'left';
+
+		y += extrasCardH + GAP;
+	}
 	if (payerRows) {
 		ctx.fillStyle = SHARE_COLORS.surface;
 		roundRect(ctx, PAD, y, CW, payerCardH, 14);

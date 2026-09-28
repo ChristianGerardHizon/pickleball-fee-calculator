@@ -1,6 +1,6 @@
 <script>
 	import { formatCurrency, formatDateLabel, parseNames, titleCase } from '$lib/format.js';
-	import { getEventTotals } from '$lib/math.js';
+	import { getAdditionalFees, getEventTotals } from '$lib/math.js';
 	import {
 		addParticipantsToEvent,
 		app,
@@ -30,13 +30,26 @@
 	});
 
 	function addCourt() {
-		event?.courts.push({ fee: 0, payer: '' });
+		event?.courts.push({ fee: 0, payer: '', name: '' });
 		persist();
 	}
 
 	/** @param {number} idx */
 	function removeCourt(idx) {
 		event?.courts.splice(idx, 1);
+		persist();
+	}
+
+	function addAdditionalFee() {
+		if (!event) return;
+		if (!Array.isArray(event.additionalFees)) event.additionalFees = [];
+		event.additionalFees.push({ name: '', amount: 0, payer: '' });
+		persist();
+	}
+
+	/** @param {number} idx */
+	function removeAdditionalFee(idx) {
+		event?.additionalFees?.splice(idx, 1);
 		persist();
 	}
 
@@ -75,6 +88,24 @@
 	function removeMaster(idx) {
 		app.data.masterList.splice(idx, 1);
 		persist();
+	}
+
+	/**
+	 * @param {import('$lib/storage.js').Participant} person
+	 * @param {Event & { currentTarget: HTMLInputElement }} e
+	 */
+	function onFixedAmountInput(person, e) {
+		const raw = e.currentTarget.value;
+		if (raw === '') {
+			person.fixedAmount = null;
+			persistSoon();
+			return;
+		}
+		const n = Number(raw);
+		// Ignore incomplete/invalid drafts (e.g. "-", "1e") so we never persist NaN.
+		if (!Number.isFinite(n) || n < 0) return;
+		person.fixedAmount = n;
+		persistSoon();
 	}
 
 	/** @param {KeyboardEvent} e */
@@ -137,46 +168,125 @@
 					</span>
 					Courts
 				</h2>
-				<div>
+				<div class="court-list">
 					{#if event.courts.length === 0}
 						<p class="empty-state">No courts yet. Add one below to start splitting fees.</p>
 					{/if}
 					{#each event.courts as court, idx (idx)}
+						{@const courtLabel = court.name?.trim() || `Court ${idx + 1}`}
 						<div class="court-row">
-							<div class="court-row-main">
-								<span class="court-label">Court {idx + 1}</span>
-								<input
-									type="number"
-									min="0"
-									step="0.01"
-									inputmode="decimal"
-									aria-label="Court {idx + 1} fee"
-									class="court-fee-input"
-									bind:value={court.fee}
-									oninput={persistSoon}
-								/>
-								<button
-									type="button"
-									class="remove-btn"
-									aria-label="Remove court"
-									onclick={() => removeCourt(idx)}
-								>
-									<IconX />
-								</button>
-							</div>
+							<input
+								type="text"
+								class="court-label"
+								placeholder="Court {idx + 1}"
+								aria-label="Court {idx + 1} name"
+								bind:value={court.name}
+								oninput={persistSoon}
+							/>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								inputmode="decimal"
+								aria-label="{courtLabel} fee"
+								class="court-fee-input"
+								bind:value={court.fee}
+								oninput={persistSoon}
+							/>
+							<button
+								type="button"
+								class="remove-btn"
+								aria-label="Remove {courtLabel}"
+								onclick={() => removeCourt(idx)}
+							>
+								<IconX />
+							</button>
 							<input
 								type="text"
 								class="court-payer-input"
 								placeholder="Paid by (optional)"
+								aria-label="{courtLabel} paid by"
 								bind:value={court.payer}
 								oninput={persistSoon}
 							/>
 						</div>
 					{/each}
 				</div>
-				<button type="button" class="btn-secondary" onclick={addCourt}>
+				<button type="button" class="btn-secondary add-court-btn" onclick={addCourt}>
 					<IconPlus />
 					Add Court
+				</button>
+			</div>
+
+			<div class="card">
+				<h2>
+					<span class="card-icon">
+						<svg
+							class="icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+							<path d="M3 6h18" />
+							<path d="M16 10a4 4 0 0 1-8 0" />
+						</svg>
+					</span>
+					Additional Fees
+				</h2>
+				<div class="court-list">
+					{#if getAdditionalFees(event).length === 0}
+						<p class="empty-state">
+							Add group extras like food or drinks. They split evenly with the court fees.
+						</p>
+					{/if}
+					{#each event.additionalFees ?? [] as extra, idx (idx)}
+						{@const extraLabel = extra.name?.trim() || `Extra ${idx + 1}`}
+						<div class="court-row">
+							<input
+								type="text"
+								class="court-label"
+								placeholder={idx === 0 ? 'Food' : 'e.g. Drinks'}
+								aria-label="Extra {idx + 1} name"
+								bind:value={extra.name}
+								oninput={persistSoon}
+							/>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								inputmode="decimal"
+								aria-label="{extraLabel} amount"
+								class="court-fee-input"
+								bind:value={extra.amount}
+								oninput={persistSoon}
+							/>
+							<button
+								type="button"
+								class="remove-btn"
+								aria-label="Remove {extraLabel}"
+								onclick={() => removeAdditionalFee(idx)}
+							>
+								<IconX />
+							</button>
+							<input
+								type="text"
+								class="court-payer-input"
+								placeholder="Paid by (optional)"
+								aria-label="{extraLabel} paid by"
+								bind:value={extra.payer}
+								oninput={persistSoon}
+							/>
+						</div>
+					{/each}
+				</div>
+				<button type="button" class="btn-secondary add-court-btn" onclick={addAdditionalFee}>
+					<IconPlus />
+					Add Extra
 				</button>
 			</div>
 
@@ -244,11 +354,26 @@
 						<p class="empty-state">No participants yet. Add names above or from the master list.</p>
 					{/if}
 					{#each event.participants as person, idx (person.name + idx)}
+						{@const amountRow = totals.participantAmounts[idx]}
 						<div class="participant-row" class:paid={person.paid}>
 							<label class="participant-check">
 								<input type="checkbox" bind:checked={person.paid} onchange={persist} />
 								<span>{titleCase(person.name)}</span>
 							</label>
+							<span class="participant-owed money" title="Amount owed">
+								{formatCurrency(amountRow?.owed ?? 0)}
+							</span>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								inputmode="decimal"
+								class="participant-fixed"
+								placeholder="equal"
+								aria-label="{titleCase(person.name)} fixed amount"
+								value={person.fixedAmount ?? ''}
+								oninput={(e) => onFixedAmountInput(person, e)}
+							/>
 							{#if person.paid}
 								<span class="paid-badge">Paid</span>
 							{/if}
@@ -288,8 +413,33 @@
 			</h2>
 			<div>
 				<div class="summary-highlight">
-					<span class="summary-highlight-label">Amount per person</span>
+					<span class="summary-highlight-label">
+						{totals.hasFixedAmounts ? 'Standard share' : 'Amount per person'}
+					</span>
 					<span class="summary-highlight-value money">{formatCurrency(totals.perPerson)}</span>
+				</div>
+				{#if totals.hasFixedAmounts}
+					<p class="fixed-amounts-note">
+						{totals.fixedCount}
+						{totals.fixedCount === 1 ? 'person' : 'people'} on fixed amounts
+						({formatCurrency(totals.fixedTotal)} total)
+					</p>
+				{/if}
+				{#if totals.fixedMismatch}
+					<p class="field-error" role="alert">
+						Fixed amounts ({formatCurrency(totals.fixedTotal)}) don’t match the total fee
+						({formatCurrency(totals.totalFee)}).
+					</p>
+				{/if}
+				<div class="fee-breakdown">
+					<div class="fee-breakdown-row">
+						<span>Court fees</span>
+						<span class="money">{formatCurrency(totals.courtTotal)}</span>
+					</div>
+					<div class="fee-breakdown-row">
+						<span>Extra fees</span>
+						<span class="money">{formatCurrency(totals.extraTotal)}</span>
+					</div>
 				</div>
 				<div class="summary-grid">
 					<div>
