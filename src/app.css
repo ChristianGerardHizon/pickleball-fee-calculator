@@ -840,7 +840,7 @@ a:focus-visible,
 
 .court-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
   grid-template-areas:
     "label fee remove"
     "payer payer remove";
@@ -863,29 +863,8 @@ a:focus-visible,
 input.court-label {
   grid-area: label;
   width: 100%;
-  min-width: 4.5rem;
-  max-width: 7rem;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  font-size: 0.85rem;
+  min-width: 0;
   font-weight: 600;
-  color: var(--ink-600);
-  line-height: 1.2;
-  box-shadow: none;
-  transition: color 0.15s ease;
-}
-
-input.court-label::placeholder {
-  color: var(--ink-500);
-}
-
-input.court-label:focus {
-  outline: none;
-  border: none;
-  box-shadow: none;
-  color: var(--ink-900);
 }
 
 .court-fee-input {
@@ -1373,9 +1352,6 @@ input.court-label:focus {
     column-gap: 8px;
   }
 
-  input.court-label {
-    font-size: 0.8rem;
-  }
 
   .modal-content {
     padding: 20px 16px;

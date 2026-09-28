@@ -1,5 +1,5 @@
 /**
- * @typedef {{ fee: number, payer: string, name?: string }} Court
+ * @typedef {{ fee: number, payer: string, name: string }} Court
  * @typedef {{ name: string, amount: number, payer: string }} AdditionalFee
  * @typedef {{ name: string, paid: boolean }} Participant
  * @typedef {{ courts: Court[], additionalFees?: AdditionalFee[], participants: Participant[], createdAt: string }} EventRecord
@@ -12,19 +12,81 @@ export function emptyData() {
 }
 
 /**
+ * @param {unknown} court
+ * @returns {Court}
+ */
+function normalizeCourt(court) {
+	if (!court || typeof court !== 'object') return { fee: 0, payer: '', name: '' };
+	const value = /** @type {Record<string, unknown>} */ (court);
+	return {
+		fee: Number(value.fee) || 0,
+		payer: typeof value.payer === 'string' ? value.payer : '',
+		name: typeof value.name === 'string' ? value.name : ''
+	};
+}
+
+/**
+ * @param {unknown} fee
+ * @returns {AdditionalFee}
+ */
+function normalizeAdditionalFee(fee) {
+	if (!fee || typeof fee !== 'object') return { name: '', amount: 0, payer: '' };
+	const value = /** @type {Record<string, unknown>} */ (fee);
+	return {
+		name: typeof value.name === 'string' ? value.name : '',
+		amount: Number(value.amount) || 0,
+		payer: typeof value.payer === 'string' ? value.payer : ''
+	};
+}
+
+/**
+ * @param {unknown} event
+ * @returns {EventRecord}
+ */
+function normalizeEvent(event) {
+	if (!event || typeof event !== 'object') {
+		return { courts: [], participants: [], createdAt: new Date().toISOString() };
+	}
+	const value = /** @type {Record<string, unknown>} */ (event);
+	return {
+		courts: Array.isArray(value.courts) ? value.courts.map(normalizeCourt) : [],
+		additionalFees: Array.isArray(value.additionalFees)
+			? value.additionalFees.map(normalizeAdditionalFee)
+			: undefined,
+		participants: Array.isArray(value.participants)
+			? value.participants
+					.filter((p) => p && typeof p === 'object')
+					.map((p) => {
+						const part = /** @type {Record<string, unknown>} */ (p);
+						return {
+							name: typeof part.name === 'string' ? part.name : '',
+							paid: Boolean(part.paid)
+						};
+					})
+			: [],
+		createdAt: typeof value.createdAt === 'string' ? value.createdAt : new Date().toISOString()
+	};
+}
+
+/**
  * @param {unknown} parsed
  * @returns {AppData}
  */
 export function normalizeAppData(parsed) {
 	if (!parsed || typeof parsed !== 'object') return emptyData();
 	const value = /** @type {Record<string, unknown>} */ (parsed);
+	/** @type {Record<string, EventRecord>} */
+	const events = {};
+	if (value.events && typeof value.events === 'object' && !Array.isArray(value.events)) {
+		for (const [date, event] of Object.entries(value.events)) {
+			events[date] = normalizeEvent(event);
+		}
+	}
 	return {
 		masterList: Array.isArray(value.masterList)
 			? value.masterList.filter((n) => typeof n === 'string')
 			: [],
-		events: value.events && typeof value.events === 'object' && !Array.isArray(value.events)
-			? /** @type {Record<string, EventRecord>} */ (value.events)
-			: {}
+		events
 	};
 }
 
