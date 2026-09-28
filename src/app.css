@@ -966,11 +966,25 @@ input.court-label {
 
 .chip:hover { background: var(--emerald-100); border-color: var(--emerald-200); }
 
+.chip-more {
+  background: transparent;
+  color: var(--ink-600);
+  border-style: dashed;
+  border-color: var(--ink-200);
+}
+
+.chip-more:hover {
+  background: var(--ink-100);
+  border-color: var(--ink-200);
+  color: var(--ink-900);
+}
+
 .participant-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-height: 360px;
+  overflow-x: hidden;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -983,6 +997,7 @@ input.court-label {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 48px;
   padding: 6px 6px 6px 12px;
   border: 1.5px solid var(--ink-200);
@@ -1012,15 +1027,19 @@ input.court-label {
   color: var(--emerald-800);
 }
 
-.participant-fixed {
+/* Beat global input[type=number]{width:100%} so the name column isn't crushed. */
+.participant-row .participant-fixed {
   flex: none;
+  box-sizing: border-box;
   width: 5.5rem;
+  min-width: 5.5rem;
+  max-width: 5.5rem;
   padding: 8px 8px;
   font-size: 0.9rem;
   text-align: right;
 }
 
-.participant-fixed::placeholder {
+.participant-row .participant-fixed::placeholder {
   color: var(--ink-500);
   font-weight: 500;
   text-align: center;
@@ -1051,7 +1070,11 @@ input.court-label {
 }
 
 .participant-check span {
-  overflow-wrap: anywhere;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.3;
   color: var(--ink-900);
 }
@@ -1251,11 +1274,75 @@ input.court-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   border: 1.5px solid var(--ink-200);
   border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.master-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.master-edit-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.edit-btn {
+  background: var(--ink-100);
+  border: 1.5px solid var(--ink-200);
+  color: var(--ink-600);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.edit-btn .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  vertical-align: unset;
+}
+
+.edit-btn:hover {
+  background: var(--ink-200);
+  border-color: #cbd5e1;
+}
+
+.edit-btn:focus-visible {
+  outline: 2px solid var(--ink-600);
+  outline-offset: 2px;
+}
+
+.edit-btn.save-btn {
+  background: var(--emerald-50);
+  border-color: var(--emerald-200);
+  color: var(--emerald-700);
+}
+
+.edit-btn.save-btn:hover {
+  background: var(--emerald-100);
+  border-color: var(--emerald-200);
+}
+
+.edit-btn.save-btn:focus-visible {
+  outline-color: var(--emerald-600);
 }
 
 .modal {
@@ -1396,7 +1483,8 @@ input.court-label {
     padding: 12px 18px;
   }
 
-  .remove-btn {
+  .remove-btn,
+  .edit-btn {
     width: 44px;
     height: 44px;
   }
