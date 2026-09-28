@@ -1045,6 +1045,40 @@ input.court-label {
   text-align: center;
 }
 
+.participant-fixed-btn {
+  flex: none;
+  box-sizing: border-box;
+  min-width: 5.5rem;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-500);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.participant-fixed-btn:hover {
+  background: var(--emerald-50);
+  border-color: var(--emerald-200);
+  color: var(--emerald-800);
+}
+
+.participant-fixed-btn:focus-visible {
+  outline: 2px solid var(--emerald-600);
+  outline-offset: 2px;
+}
+
+.participant-fixed-btn.is-fixed {
+  color: var(--ink-800);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 .paid-badge {
   flex: none;
   background: var(--emerald-100);
@@ -1055,6 +1089,25 @@ input.court-label {
   letter-spacing: 0.04em;
   padding: 4px 8px;
   border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.share-badge {
+  flex: none;
+  background: var(--ink-100);
+  color: var(--ink-500);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.share-badge.is-fixed {
+  background: var(--emerald-50);
+  color: var(--emerald-800);
 }
 
 .participant-check {
@@ -1069,7 +1122,7 @@ input.court-label {
   min-height: 44px;
 }
 
-.participant-check span {
+.participant-check > span {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -1077,6 +1130,34 @@ input.court-label {
   white-space: nowrap;
   line-height: 1.3;
   color: var(--ink-900);
+}
+
+.participant-check > .participant-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+}
+
+.participant-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+  color: var(--ink-900);
+}
+
+.participant-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .participant-check input {

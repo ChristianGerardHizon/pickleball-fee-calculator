@@ -27,6 +27,8 @@
 	let masterExpanded = $state(false);
 	let editingMasterIdx = $state(/** @type {number | null} */ (null));
 	let editMasterDraft = $state('');
+	let editingFixedIdx = $state(/** @type {number | null} */ (null));
+	let editFixedDraft = $state('');
 
 	const MASTER_PREVIEW = 5;
 
@@ -92,6 +94,8 @@
 
 	/** @param {number} idx */
 	function removeParticipant(idx) {
+		if (editingFixedIdx === idx) cancelEditFixed();
+		else if (editingFixedIdx !== null && editingFixedIdx > idx) editingFixedIdx -= 1;
 		event?.participants.splice(idx, 1);
 		persist();
 	}
@@ -144,22 +148,53 @@
 		}
 	}
 
-	/**
-	 * @param {import('$lib/storage.js').Participant} person
-	 * @param {Event & { currentTarget: HTMLInputElement }} e
-	 */
-	function onFixedAmountInput(person, e) {
-		const raw = e.currentTarget.value;
+	/** @param {number} idx */
+	function startEditFixed(idx) {
+		const person = event?.participants[idx];
+		if (!person) return;
+		editingFixedIdx = idx;
+		editFixedDraft = person.fixedAmount != null ? String(person.fixedAmount) : '';
+	}
+
+	function cancelEditFixed() {
+		editingFixedIdx = null;
+		editFixedDraft = '';
+	}
+
+	function saveEditFixed() {
+		if (editingFixedIdx === null || !event) return;
+		const person = event.participants[editingFixedIdx];
+		if (!person) {
+			cancelEditFixed();
+			return;
+		}
+		const raw = editFixedDraft.trim();
 		if (raw === '') {
 			person.fixedAmount = null;
+			cancelEditFixed();
 			persistSoon();
 			return;
 		}
 		const n = Number(raw);
 		// Ignore incomplete/invalid drafts (e.g. "-", "1e") so we never persist NaN.
-		if (!Number.isFinite(n) || n < 0) return;
+		if (!Number.isFinite(n) || n < 0) {
+			cancelEditFixed();
+			return;
+		}
 		person.fixedAmount = n;
+		cancelEditFixed();
 		persistSoon();
+	}
+
+	/** @param {KeyboardEvent} e */
+	function onEditFixedKeydown(e) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			saveEditFixed();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEditFixed();
+		}
 	}
 
 	/** @param {KeyboardEvent} e */
@@ -418,27 +453,54 @@
 					{/if}
 					{#each event.participants as person, idx (person.name + idx)}
 						{@const amountRow = totals.participantAmounts[idx]}
+						{@const isFixed = Boolean(amountRow?.isFixed)}
 						<div class="participant-row" class:paid={person.paid}>
 							<label class="participant-check">
 								<input type="checkbox" bind:checked={person.paid} onchange={persist} />
-								<span>{titleCase(person.name)}</span>
+								<span class="participant-identity">
+									<span class="participant-name">{titleCase(person.name)}</span>
+									<span class="participant-meta">
+										<span class="share-badge" class:is-fixed={isFixed}>
+											{isFixed ? 'Fixed' : 'Equal'}
+										</span>
+										{#if person.paid}
+											<span class="paid-badge">Paid</span>
+										{/if}
+									</span>
+								</span>
 							</label>
 							<span class="participant-owed money" title="Amount owed">
 								{formatCurrency(amountRow?.owed ?? 0)}
 							</span>
-							<input
-								type="number"
-								min="0"
-								step="0.01"
-								inputmode="decimal"
-								class="participant-fixed"
-								placeholder="equal"
-								aria-label="{titleCase(person.name)} fixed amount"
-								value={person.fixedAmount ?? ''}
-								oninput={(e) => onFixedAmountInput(person, e)}
-							/>
-							{#if person.paid}
-								<span class="paid-badge">Paid</span>
+							{#if editingFixedIdx === idx}
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									inputmode="decimal"
+									class="participant-fixed"
+									placeholder="equal"
+									aria-label="{titleCase(person.name)} fixed amount"
+									value={editFixedDraft}
+									autofocus
+									oninput={(e) => {
+										editFixedDraft = e.currentTarget.value;
+									}}
+									onkeydown={onEditFixedKeydown}
+									onblur={saveEditFixed}
+								/>
+							{:else}
+								<button
+									type="button"
+									class="participant-fixed-btn"
+									class:is-fixed={isFixed}
+									aria-label="Edit {titleCase(person.name)} amount"
+									onclick={() => startEditFixed(idx)}
+								>
+									{isFixed && person.fixedAmount != null
+										? formatCurrency(person.fixedAmount)
+										: 'Equal'}
+								</button>
 							{/if}
 							<button
 								type="button"
