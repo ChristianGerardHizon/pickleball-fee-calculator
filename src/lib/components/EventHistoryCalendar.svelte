@@ -95,7 +95,9 @@
 					type="button"
 					class="event-cal-day has-event"
 					aria-label="Open event {cell.iso}"
-					onclick={() => onSelect(cell.iso)}
+					onclick={() => {
+						if (cell.iso) onSelect(cell.iso);
+					}}
 				>
 					{cell.day}
 				</button>
