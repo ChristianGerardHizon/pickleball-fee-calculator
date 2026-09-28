@@ -10,7 +10,8 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"db:migrate:local": "wrangler d1 migrations apply pickleball-fee-splitter --local",
 		"db:migrate:remote": "wrangler d1 migrations apply pickleball-fee-splitter --remote",
-		"deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=pickleball-fee-calculator --branch=main",
+		"deploy:staging": "npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=pickleball-fee-calculator --branch=staging",
+		"deploy:production": "npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name=pickleball-fee-calculator --branch=main",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch"
 	},

@@ -57,9 +57,14 @@ npx wrangler dev
 
 ## Deploying
 
-Production URL: https://pickleball-fee-calculator.pages.dev/
+| Trigger | Environment | URL |
+| --- | --- | --- |
+| Push / merge to `main` | Staging | https://staging.pickleball-fee-calculator.pages.dev/ |
+| GitHub **Release** published | Production | https://pickleball-fee-calculator.pages.dev/ |
 
-Pushes to `main` deploy via GitHub Actions (`.github/workflows/deploy-cloudflare-pages.yml`).
+CI workflow: `.github/workflows/deploy-cloudflare-pages.yml` (also supports manual `workflow_dispatch`).
+
+In the Cloudflare Pages project, keep the **production branch** set to `main` so release deploys become the live `*.pages.dev` site. Staging uses the non-production Pages branch alias `staging`.
 
 Required GitHub repository secrets:
 
@@ -72,10 +77,11 @@ Optional repository variable:
 
 Also set `TURNSTILE_SECRET_KEY` as a Pages/Wrangler secret (server only), bind D1 as `DB`, and enable compatibility flag `nodejs_als`.
 
-Manual deploy from a machine with Wrangler auth:
+Manual deploy:
 
 ```sh
-npm run deploy
+npm run deploy:staging
+npm run deploy:production
 ```
 
-Apply remote migrations before (or as part of) the first deploy.
+Apply remote migrations before (or as part of) the first deploy. Staging and production currently share the same D1 database from `wrangler.jsonc`.

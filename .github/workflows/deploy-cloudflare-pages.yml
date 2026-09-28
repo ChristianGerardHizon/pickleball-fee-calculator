@@ -3,10 +3,21 @@ name: Deploy Cloudflare Pages
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      target:
+        description: Deploy target
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
 
 concurrency:
-  group: cloudflare-pages-production
+  group: cloudflare-pages-${{ github.event_name == 'release' && 'production' || github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
   cancel-in-progress: true
 
 jobs:
@@ -15,9 +26,31 @@ jobs:
     permissions:
       contents: read
       deployments: write
+    env:
+      # Cloudflare Pages: production branch alias is `main` → pickleball-fee-calculator.pages.dev
+      # Non-production branch `staging` → staging.pickleball-fee-calculator.pages.dev
+      DEPLOY_TARGET: ${{ github.event_name == 'release' && 'production' || github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
     steps:
+      - name: Resolve Pages branch
+        id: target
+        shell: bash
+        run: |
+          if [ "$DEPLOY_TARGET" = "production" ]; then
+            echo "pages_branch=main" >> "$GITHUB_OUTPUT"
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+            echo "url=https://pickleball-fee-calculator.pages.dev/" >> "$GITHUB_OUTPUT"
+          else
+            echo "pages_branch=staging" >> "$GITHUB_OUTPUT"
+            echo "environment=staging" >> "$GITHUB_OUTPUT"
+            echo "url=https://staging.pickleball-fee-calculator.pages.dev/" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Deploying to $DEPLOY_TARGET"
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Releases checkout the tag by default; pushes use the commit SHA.
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -38,13 +71,18 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Prefer repo variable; fall back to Cloudflare dummy always-pass key.
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY != '' && vars.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000BB' }}
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (${{ steps.target.outputs.environment }})
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .svelte-kit/cloudflare --project-name=pickleball-fee-calculator --branch=main --commit-dirty=true
+          command: pages deploy .svelte-kit/cloudflare --project-name=pickleball-fee-calculator --branch=${{ steps.target.outputs.pages_branch }} --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "### Deployed to ${{ steps.target.outputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${{ steps.target.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Pages branch: \`${{ steps.target.outputs.pages_branch }}\`" >> "$GITHUB_STEP_SUMMARY"
