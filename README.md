@@ -1,35 +1,68 @@
 # Pickleball Fee Splitter
 
-A static web app for splitting pickleball court fees among participants. No build step — plain HTML/CSS/JS, so it hosts directly on GitHub Pages.
+A SvelteKit app for splitting pickleball court fees among participants. Each person signs in to their own profile. Event data is stored in Cloudflare D1 (not in the browser).
 
 ## Features
 
+- Per-user accounts (email + password) with session cookies
+- Invisible Cloudflare Turnstile on sign in and create account
 - Add multiple courts, each with its own fee and an optional "Paid by" owner
 - When 2+ courts have different owners, the Summary shows a Reimbursements breakdown of how much is owed back to each person (their share of the total pool, collected proportionally as participants pay). Leave "Paid by" blank (or the same on every court) and this stays hidden — the app behaves as a single-owner splitter by default
 - Mass-add participants by pasting a numbered list (e.g. `1. johanna`), or add one at a time
-- Master list of members is remembered across events, so new event dates can reuse or tweak the previous roster
+- Starting a new event asks you to confirm the roster first: copy participants from a previous event, uncheck or remove anyone who isn’t playing, and add extra names before the event is created
+- Master list of members is remembered across events, so you can still add known names later from chips on the main screen
 - Per-event checklist to mark who has paid, with collected/remaining totals
-- Event access is gated by date + a shared password (`hizon` by default) — this is a light gate only, not real security, since the password is visible in the source
 - Generates a shareable PNG summary (courts, total, per-person amount, participant list) that excludes paid/unpaid status
 
 ## Running locally
 
-Just open `index.html` in a browser, or serve the folder with any static file server:
+```sh
+npm install
+npx wrangler d1 migrations apply pickleball-fee-splitter --local
+npm run dev
+```
 
-```
-npx serve .
-```
+Then open the URL Vite prints (usually `http://localhost:5173`). Vite uses the D1 binding from `wrangler.jsonc` so `/api/*` talks to the local database. New accounts start empty.
+
+Local Turnstile uses Cloudflare’s dummy **invisible always-pass** keys (`PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000BB` and `TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` in `.env.development` / `.dev.vars`). Create an Invisible widget in the Cloudflare dashboard for production and set the real keys as a Pages/Workers env var (site key) and a Wrangler secret (secret key). Do not put the secret in client code.
+
+If you already registered with a username before this change, wipe the local D1 (or delete those users) and apply migrations again — logins are email-only now.
 
 ## Data storage
 
-All data (master list + per-date events) is saved in the browser's `localStorage` under the key `pickleball-fee-splitter-data`. Data is local to the browser/device — it isn't synced anywhere.
+Each signed-in user has one JSON document in D1 (`masterList` + `events` keyed by date). The UI still uses the same in-memory shape as before. Saving is debounced while typing court fees or payer names.
 
-## Deploying to GitHub Pages
+Create a remote D1 database once, then put its id in `wrangler.jsonc`:
 
-1. Push this repo to GitHub.
-2. In the repo settings, go to **Pages** and set the source to the `main` branch, root folder.
-3. The site will be available at `https://<username>.github.io/<repo>/`.
+```sh
+npx wrangler d1 create pickleball-fee-splitter
+npx wrangler d1 migrations apply pickleball-fee-splitter --remote
+```
 
-## Changing the password
+Replace the placeholder `database_id` in `wrangler.jsonc` with the id Wrangler prints. Bind the same database as `DB` on the Cloudflare Pages/Workers project.
 
-Edit the `APP_PASSWORD` constant near the top of `script.js`.
+Do not put Cloudflare API tokens in client code. Keep them in `.env` or CI secrets only.
+
+## Building
+
+```sh
+npm run build
+```
+
+Output for Cloudflare is `.svelte-kit/cloudflare`. Preview with Wrangler:
+
+```sh
+npx wrangler dev
+```
+
+## Deploying
+
+Use the Cloudflare Git integration or `npx wrangler deploy`.
+
+- Build command: `npm run build`
+- Output directory (Pages): `.svelte-kit/cloudflare`
+- Compatibility flag: `nodejs_als`
+- D1 binding name: `DB`
+- Env: `PUBLIC_TURNSTILE_SITE_KEY` (build + runtime), `TURNSTILE_SECRET_KEY` (secret, server only)
+
+Apply remote migrations before (or as part of) the first deploy.

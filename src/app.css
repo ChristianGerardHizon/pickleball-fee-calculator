@@ -47,6 +47,8 @@ body {
 
 .hidden { display: none !important; }
 
+body.modal-open { overflow: hidden; }
+
 #app {
   max-width: 960px;
   margin: 0 auto;
@@ -54,17 +56,16 @@ body {
   overflow-x: hidden;
 }
 
-/* Icons */
 .icon {
   width: 1em;
   height: 1em;
   flex: none;
   display: inline-block;
   vertical-align: middle;
+  pointer-events: none;
 }
 
-/* Gate screen */
-#gate-screen {
+.gate-screen {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -129,7 +130,213 @@ body {
   margin: 14px 0 6px;
 }
 
-.gate-card input { width: 100%; }
+.gate-card input,
+.gate-card select { width: 100%; }
+
+.auth-toggle {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 4px;
+  background: var(--ink-100, #f1f5f9);
+  border-radius: 10px;
+}
+
+.auth-toggle-btn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink-500);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.auth-toggle-btn.active {
+  background: var(--surface);
+  color: var(--ink-900, #0f172a);
+  box-shadow: var(--shadow-md);
+}
+
+.gate-logout {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 68px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 60px;
+  border: none;
+  background: transparent;
+  color: var(--emerald-700);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.password-toggle:hover { color: var(--emerald-800); }
+
+.gate-card.event-home {
+  max-width: 480px;
+  text-align: left;
+}
+
+.gate-card.event-home h1,
+.gate-card.event-home .subtitle {
+  text-align: center;
+}
+
+.gate-account-actions {
+  margin: -8px 0 8px;
+}
+
+.gate-account-actions .btn-secondary {
+  width: 100%;
+}
+
+.gate-card label.remember-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  margin: 16px 0 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.remember-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--emerald-700);
+}
+
+.remember-title {
+  display: block;
+}
+
+.remember-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink-500);
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.history-heading {
+  margin: 22px 0 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-empty {
+  margin: 0 0 8px;
+  color: var(--ink-500);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.history-open {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--ink-200);
+  background: var(--ink-100);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.history-open:hover {
+  border-color: var(--emerald-200);
+  background: var(--emerald-50);
+}
+
+.history-date {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.history-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--ink-500);
+  font-weight: 600;
+}
+
+.history-delete {
+  flex: none;
+  align-self: center;
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--danger-700);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.save-ok {
+  margin: 8px 0 0;
+  color: var(--emerald-700);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.gate-card input:read-only {
+  background: var(--ink-100);
+  color: var(--ink-600);
+}
+
+.turnstile-host {
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
 
 .error-text {
   color: var(--danger-700);
@@ -139,7 +346,95 @@ body {
   font-weight: 600;
 }
 
-/* Header */
+.roster-screen {
+  min-height: calc(100vh - 48px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+.gate-card.roster-card {
+  max-width: 480px;
+  text-align: left;
+}
+
+.gate-card.roster-card h1,
+.gate-card.roster-card .subtitle {
+  text-align: center;
+}
+
+.gate-card.roster-card .subtitle {
+  margin: 0 0 10px;
+}
+
+.gate-card.roster-card .hint {
+  margin: 0 0 16px;
+}
+
+.gate-card.roster-card label {
+  margin: 16px 0 6px;
+}
+
+.gate-card.roster-card .hint + label {
+  margin-top: 0;
+}
+
+.roster-count {
+  margin: 14px 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-600);
+}
+
+.participant-list.roster-list {
+  max-height: min(360px, 42vh);
+  margin: 0;
+}
+
+.roster-empty,
+.empty-state {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--ink-500);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border: 1.5px dashed var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+}
+
+.empty-state {
+  margin-bottom: 12px;
+}
+
+.roster-row {
+  min-height: 48px;
+}
+
+.roster-row.selected {
+  background: var(--emerald-50);
+  border-color: var(--emerald-200);
+}
+
+.roster-row:not(.selected) .participant-check span {
+  color: var(--ink-500);
+}
+
+.quick-add.roster-add {
+  margin-bottom: 0;
+}
+
+.gate-card.roster-card .btn-primary {
+  margin-top: 16px;
+}
+
+.roster-back-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
 .app-header {
   display: flex;
   align-items: center;
@@ -162,8 +457,48 @@ body {
 
 .brand > div { min-width: 0; }
 
-#switch-event-btn {
+.switch-event-btn {
   flex: none;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-200);
+  flex: none;
+}
+
+.sync-status.saving .sync-dot {
+  background: var(--emerald-500);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.sync-status.saved .sync-dot { background: var(--emerald-500); }
+
+.sync-status.error { color: var(--danger-600); }
+.sync-status.error .sync-dot { background: var(--danger-600); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 
 .brand-icon {
@@ -200,7 +535,6 @@ body {
   white-space: nowrap;
 }
 
-/* Layout */
 .grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -221,8 +555,6 @@ body {
   transition: border-color 0.15s var(--ease);
 }
 
-/* Grid gap already provides spacing between these cards — an extra
-   margin-bottom here would double up once they stack to one column. */
 .grid > .card {
   margin-bottom: 0;
 }
@@ -282,14 +614,14 @@ details.card[open] summary::after { transform: rotate(45deg); }
   margin: 8px 0 12px;
 }
 
-/* Inputs & buttons */
 input[type="text"],
+input[type="email"],
 input[type="password"],
 input[type="date"],
 input[type="number"],
+select,
 textarea {
   font-family: inherit;
-  /* 16px stops iOS Safari auto-zooming the page on focus */
   font-size: 16px;
   padding: 10px 12px;
   border: 1.5px solid var(--ink-200);
@@ -300,7 +632,11 @@ textarea {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-input:focus, textarea:focus {
+select {
+  cursor: pointer;
+}
+
+input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--emerald-500);
   box-shadow: 0 0 0 3px var(--emerald-100);
@@ -349,15 +685,23 @@ textarea {
 
 .btn-secondary:hover { background: var(--emerald-100); border-color: var(--emerald-200); }
 
+.btn-primary:disabled, .btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled:hover { background: var(--emerald-700); }
+.btn-secondary:disabled:hover { background: var(--emerald-50); border-color: var(--emerald-100); }
+
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--emerald-600);
   outline-offset: 2px;
 }
 
-/* Courts */
 .court-row {
   padding-bottom: 12px;
   margin-bottom: 12px;
@@ -399,10 +743,11 @@ a:focus-visible,
 
 .remove-btn {
   background: var(--danger-50);
-  border: none;
-  color: var(--danger-600);
-  width: 32px;
-  height: 32px;
+  border: 1.5px solid var(--danger-100);
+  color: var(--danger-700);
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border-radius: 50%;
   cursor: pointer;
   flex: none;
@@ -410,12 +755,26 @@ a:focus-visible,
   align-items: center;
   justify-content: center;
   touch-action: manipulation;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.remove-btn:hover { background: var(--danger-100); }
+.remove-btn .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  vertical-align: unset;
+}
 
-/* Quick add */
+.remove-btn:hover {
+  background: var(--danger-100);
+  border-color: #fecaca;
+}
+
+.remove-btn:focus-visible {
+  outline: 2px solid var(--danger-600);
+  outline-offset: 2px;
+}
+
 .quick-add {
   display: flex;
   gap: 8px;
@@ -424,7 +783,6 @@ a:focus-visible,
 
 .quick-add input { flex: 1; min-width: 0; }
 
-/* Chips */
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -445,7 +803,7 @@ a:focus-visible,
   color: var(--emerald-800);
   border: 1.5px solid var(--emerald-100);
   border-radius: var(--radius-full);
-  padding: 6px 13px;
+  padding: 8px 14px;
   font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
@@ -456,11 +814,10 @@ a:focus-visible,
 
 .chip:hover { background: var(--emerald-100); border-color: var(--emerald-200); }
 
-/* Participants */
 .participant-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   max-height: 360px;
   overflow-y: auto;
   padding-right: 2px;
@@ -473,11 +830,12 @@ a:focus-visible,
 .participant-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 6px 6px 12px;
   border: 1.5px solid var(--ink-200);
   border-radius: var(--radius-sm);
+  background: var(--surface);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -492,7 +850,7 @@ a:focus-visible,
   flex: none;
   background: var(--emerald-100);
   color: var(--emerald-800);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -503,27 +861,48 @@ a:focus-visible,
 .participant-check {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   cursor: pointer;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   flex: 1;
   min-width: 0;
+  min-height: 44px;
 }
 
 .participant-check span {
   overflow-wrap: anywhere;
+  line-height: 1.3;
+  color: var(--ink-900);
 }
 
 .participant-check input {
-  width: 20px;
-  height: 20px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
   flex: none;
-  accent-color: var(--emerald-600);
+  border: 2px solid var(--ink-200);
+  border-radius: 6px;
+  background: var(--surface);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
   cursor: pointer;
 }
 
-/* Summary */
+.participant-check input:checked {
+  background-color: var(--emerald-700);
+  border-color: var(--emerald-700);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5 9.5 17 19 7'/%3E%3C/svg%3E");
+}
+
+.participant-check input:focus-visible {
+  outline: 2px solid var(--emerald-600);
+  outline-offset: 2px;
+}
+
 .summary-highlight {
   background: var(--emerald-700);
   color: #fff;
@@ -532,13 +911,9 @@ a:focus-visible,
   margin-bottom: 16px;
 }
 
-/* Arial-only stack: Plus Jakarta Sans has no "₱" glyph, so mixing fonts
-   here means the peso sign silently falls back to Arial's regular weight
-   while the digits render at the requested bold weight, making the symbol
-   look thin/broken next to the numbers. Keeping the whole string in one
-   font avoids the per-glyph mismatch. */
 .money {
   font-family: Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-highlight-label {
@@ -591,8 +966,6 @@ a:focus-visible,
   font-variant-numeric: tabular-nums;
 }
 
-/* Reimbursements breakdown — only rendered when 2+ distinct court payers
-   are set, so a single-owner event never shows this block. */
 .payer-breakdown {
   margin-top: 16px;
   padding-top: 14px;
@@ -644,7 +1017,7 @@ a:focus-visible,
 .payer-sub {
   font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   font-weight: 600;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: var(--ink-500);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -658,8 +1031,7 @@ a:focus-visible,
   margin-top: 2px;
 }
 
-/* Master manage list */
-#master-manage-list {
+.master-manage-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -677,7 +1049,6 @@ a:focus-visible,
   font-weight: 500;
 }
 
-/* Modal */
 .modal {
   position: fixed;
   inset: 0;
@@ -737,14 +1108,13 @@ a:focus-visible,
 
 .modal-close:hover { background: var(--ink-200); }
 
-#share-image {
+.share-image {
   width: 100%;
   border-radius: var(--radius-md);
   border: 1px solid var(--ink-200);
   margin-top: 12px;
 }
 
-/* Mobile */
 @media (max-width: 600px) {
   #app {
     padding: 16px 12px 40px;
@@ -755,11 +1125,27 @@ a:focus-visible,
     max-width: 340px;
   }
 
+  .gate-card.roster-card,
+  .gate-card.event-home {
+    max-width: 100%;
+    padding: 28px 18px 20px;
+  }
+
   .app-header {
     padding: 12px 14px;
   }
 
-  #switch-event-btn {
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sync-status {
+    justify-content: center;
+  }
+
+  .switch-event-btn {
     width: 100%;
   }
 
@@ -800,15 +1186,14 @@ a:focus-visible,
     padding: 20px 16px;
   }
 
-  /* Comfortable tap targets on touch screens */
   .btn-primary,
   .btn-secondary {
     padding: 12px 18px;
   }
 
   .remove-btn {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
   }
 }
 
