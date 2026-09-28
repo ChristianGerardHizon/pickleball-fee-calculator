@@ -120,9 +120,13 @@ function fitMoneySize(ctx, text, maxWidth, startSize, minSize) {
  * @returns {string}
  */
 export function generateShareImage(canvas, { event, date }) {
-	const { totalFee, count, perPerson, courtTotal, extraTotal } = getEventTotals(event);
+	const { totalFee, count, perPerson, courtTotal, extraTotal, hasFixedAmounts, participantAmounts } =
+		getEventTotals(event);
 	const extras = getAdditionalFees(event);
-	const names = event.participants.map((p) => titleCase(p.name));
+	const names = participantAmounts.map((p) => {
+		const label = titleCase(p.name);
+		return p.isFixed ? `${label} · ${formatCurrency(p.owed)}` : label;
+	});
 	const payerRows = getPayerBreakdown(event, totalFee, 0);
 
 	// Narrower, denser canvas tuned for reading on a phone screen (chat
@@ -211,7 +215,7 @@ export function generateShareImage(canvas, { event, date }) {
 	ctx.textAlign = 'center';
 	ctx.fillStyle = 'rgba(255,255,255,0.8)';
 	ctx.font = shareFont(700, 13);
-	ctx.fillText('AMOUNT PER PERSON', W / 2, y + 30);
+	ctx.fillText(hasFixedAmounts ? 'STANDARD SHARE' : 'AMOUNT PER PERSON', W / 2, y + 30);
 
 	const amountText = formatCurrency(perPerson);
 	const amountMaxWidth = CW - CP * 2;

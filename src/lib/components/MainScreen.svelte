@@ -90,6 +90,24 @@
 		persist();
 	}
 
+	/**
+	 * @param {import('$lib/storage.js').Participant} person
+	 * @param {Event & { currentTarget: HTMLInputElement }} e
+	 */
+	function onFixedAmountInput(person, e) {
+		const raw = e.currentTarget.value;
+		if (raw === '') {
+			person.fixedAmount = null;
+			persistSoon();
+			return;
+		}
+		const n = Number(raw);
+		// Ignore incomplete/invalid drafts (e.g. "-", "1e") so we never persist NaN.
+		if (!Number.isFinite(n) || n < 0) return;
+		person.fixedAmount = n;
+		persistSoon();
+	}
+
 	/** @param {KeyboardEvent} e */
 	function onQuickKeydown(e) {
 		if (e.key === 'Enter') quickAdd();
@@ -336,11 +354,26 @@
 						<p class="empty-state">No participants yet. Add names above or from the master list.</p>
 					{/if}
 					{#each event.participants as person, idx (person.name + idx)}
+						{@const amountRow = totals.participantAmounts[idx]}
 						<div class="participant-row" class:paid={person.paid}>
 							<label class="participant-check">
 								<input type="checkbox" bind:checked={person.paid} onchange={persist} />
 								<span>{titleCase(person.name)}</span>
 							</label>
+							<span class="participant-owed money" title="Amount owed">
+								{formatCurrency(amountRow?.owed ?? 0)}
+							</span>
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								inputmode="decimal"
+								class="participant-fixed"
+								placeholder="equal"
+								aria-label="{titleCase(person.name)} fixed amount"
+								value={person.fixedAmount ?? ''}
+								oninput={(e) => onFixedAmountInput(person, e)}
+							/>
 							{#if person.paid}
 								<span class="paid-badge">Paid</span>
 							{/if}
@@ -380,9 +413,24 @@
 			</h2>
 			<div>
 				<div class="summary-highlight">
-					<span class="summary-highlight-label">Amount per person</span>
+					<span class="summary-highlight-label">
+						{totals.hasFixedAmounts ? 'Standard share' : 'Amount per person'}
+					</span>
 					<span class="summary-highlight-value money">{formatCurrency(totals.perPerson)}</span>
 				</div>
+				{#if totals.hasFixedAmounts}
+					<p class="fixed-amounts-note">
+						{totals.fixedCount}
+						{totals.fixedCount === 1 ? 'person' : 'people'} on fixed amounts
+						({formatCurrency(totals.fixedTotal)} total)
+					</p>
+				{/if}
+				{#if totals.fixedMismatch}
+					<p class="field-error" role="alert">
+						Fixed amounts ({formatCurrency(totals.fixedTotal)}) don’t match the total fee
+						({formatCurrency(totals.totalFee)}).
+					</p>
+				{/if}
 				<div class="fee-breakdown">
 					<div class="fee-breakdown-row">
 						<span>Court fees</span>

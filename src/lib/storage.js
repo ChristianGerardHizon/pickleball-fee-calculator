@@ -1,7 +1,7 @@
 /**
  * @typedef {{ fee: number, payer: string, name: string }} Court
  * @typedef {{ name: string, amount: number, payer: string }} AdditionalFee
- * @typedef {{ name: string, paid: boolean }} Participant
+ * @typedef {{ name: string, paid: boolean, fixedAmount: number | null }} Participant
  * @typedef {{ courts: Court[], additionalFees?: AdditionalFee[], participants: Participant[], createdAt: string }} EventRecord
  * @typedef {{ masterList: string[], events: Record<string, EventRecord> }} AppData
  */
@@ -40,6 +40,16 @@ function normalizeAdditionalFee(fee) {
 }
 
 /**
+ * @param {unknown} value
+ * @returns {number | null}
+ */
+function normalizeFixedAmount(value) {
+	if (value === null || value === undefined || value === '') return null;
+	const n = Number(value);
+	return Number.isFinite(n) ? n : null;
+}
+
+/**
  * @param {unknown} event
  * @returns {EventRecord}
  */
@@ -60,7 +70,8 @@ function normalizeEvent(event) {
 						const part = /** @type {Record<string, unknown>} */ (p);
 						return {
 							name: typeof part.name === 'string' ? part.name : '',
-							paid: Boolean(part.paid)
+							paid: Boolean(part.paid),
+							fixedAmount: normalizeFixedAmount(part.fixedAmount)
 						};
 					})
 			: [],

@@ -1,12 +1,19 @@
 /**
  * @typedef {import('./storage.js').EventRecord} EventRecord
  * @typedef {import('./storage.js').AdditionalFee} AdditionalFee
+ * @typedef {import('./storage.js').Participant} Participant
  * @typedef {{ payer: string, feeSum: number, collected: number, remaining: number }} PayerRow
+ * @typedef {{ name: string, owed: number, paid: boolean, isFixed: boolean }} ParticipantAmount
  */
 
 /** @param {EventRecord} event */
 export function getAdditionalFees(event) {
 	return Array.isArray(event.additionalFees) ? event.additionalFees : [];
+}
+
+/** @param {Participant} person */
+export function isFixedAmount(person) {
+	return typeof person.fixedAmount === 'number' && Number.isFinite(person.fixedAmount);
 }
 
 /**
@@ -68,21 +75,53 @@ export function getEventTotals(event) {
 	const extraTotal = getAdditionalFees(event).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
 	const totalFee = courtTotal + extraTotal;
 	const count = event.participants.length;
-	const perPerson = count > 0 ? totalFee / count : 0;
+
+	const fixedPeople = event.participants.filter(isFixedAmount);
+	const equalPeople = event.participants.filter((p) => !isFixedAmount(p));
+	const fixedTotal = fixedPeople.reduce((sum, p) => sum + /** @type {number} */ (p.fixedAmount), 0);
+	const equalCount = equalPeople.length;
+	const hasFixedAmounts = fixedPeople.length > 0;
+	const leftover = Math.max(0, totalFee - fixedTotal);
+	const standardShare = equalCount > 0 ? leftover / equalCount : 0;
+
+	/** @type {ParticipantAmount[]} */
+	const participantAmounts = event.participants.map((p) => {
+		const isFixed = isFixedAmount(p);
+		return {
+			name: p.name,
+			owed: isFixed ? /** @type {number} */ (p.fixedAmount) : standardShare,
+			paid: Boolean(p.paid),
+			isFixed
+		};
+	});
+
 	const paidCount = event.participants.filter((p) => p.paid).length;
-	const collected = paidCount * perPerson;
-	const remaining = totalFee - collected;
+	const collected = participantAmounts
+		.filter((p) => p.paid)
+		.reduce((sum, p) => sum + p.owed, 0);
+	// Cap at the fee pool so over-fixed paid amounts don't show a negative remainder.
+	const remaining = Math.max(0, totalFee - collected);
 	const payerRows = getPayerBreakdown(event, totalFee, collected);
+
+	const fixedMismatch =
+		hasFixedAmounts &&
+		(fixedTotal > totalFee + 0.004 ||
+			(equalCount === 0 && Math.abs(fixedTotal - totalFee) > 0.004));
 
 	return {
 		courtTotal,
 		extraTotal,
 		totalFee,
 		count,
-		perPerson,
+		perPerson: standardShare,
 		paidCount,
 		collected,
 		remaining,
-		payerRows
+		payerRows,
+		fixedTotal,
+		hasFixedAmounts,
+		fixedCount: fixedPeople.length,
+		fixedMismatch,
+		participantAmounts
 	};
 }
