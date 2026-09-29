@@ -1,7 +1,7 @@
 /**
  * @typedef {{ fee: number, payer: string, name: string }} Court
  * @typedef {{ name: string, amount: number, payer: string }} AdditionalFee
- * @typedef {{ name: string, paid: boolean, fixedAmount: number | null }} Participant
+ * @typedef {{ name: string, paid: boolean, fixedAmount: number | null, courtAmounts: (number | null)[] }} Participant
  * @typedef {{ courts: Court[], additionalFees?: AdditionalFee[], participants: Participant[], createdAt: string }} EventRecord
  * @typedef {{ masterList: string[], events: Record<string, EventRecord> }} AppData
  */
@@ -46,7 +46,28 @@ function normalizeAdditionalFee(fee) {
 function normalizeFixedAmount(value) {
 	if (value === null || value === undefined || value === '') return null;
 	const n = Number(value);
-	return Number.isFinite(n) ? n : null;
+	return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * @param {unknown} value
+ * @param {number} courtCount
+ * @returns {(number | null)[]}
+ */
+function normalizeCourtAmounts(value, courtCount) {
+	const raw = Array.isArray(value) ? value : [];
+	/** @type {(number | null)[]} */
+	const out = [];
+	for (let i = 0; i < courtCount; i++) {
+		const item = raw[i];
+		if (item === null || item === undefined || item === '') {
+			out.push(null);
+			continue;
+		}
+		const n = Number(item);
+		out.push(Number.isFinite(n) && n >= 0 ? n : null);
+	}
+	return out;
 }
 
 /**
@@ -58,8 +79,9 @@ function normalizeEvent(event) {
 		return { courts: [], participants: [], createdAt: new Date().toISOString() };
 	}
 	const value = /** @type {Record<string, unknown>} */ (event);
+	const courts = Array.isArray(value.courts) ? value.courts.map(normalizeCourt) : [];
 	return {
-		courts: Array.isArray(value.courts) ? value.courts.map(normalizeCourt) : [],
+		courts,
 		additionalFees: Array.isArray(value.additionalFees)
 			? value.additionalFees.map(normalizeAdditionalFee)
 			: undefined,
@@ -71,7 +93,8 @@ function normalizeEvent(event) {
 						return {
 							name: typeof part.name === 'string' ? part.name : '',
 							paid: Boolean(part.paid),
-							fixedAmount: normalizeFixedAmount(part.fixedAmount)
+							fixedAmount: normalizeFixedAmount(part.fixedAmount),
+							courtAmounts: normalizeCourtAmounts(part.courtAmounts, courts.length)
 						};
 					})
 			: [],

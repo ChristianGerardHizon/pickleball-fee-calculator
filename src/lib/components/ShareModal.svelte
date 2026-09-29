@@ -1,15 +1,40 @@
 <script>
-	import { generateShareImage, loadShareFonts } from '$lib/share.js';
+	import { generatePersonShareImage, generateShareImage, loadShareFonts } from '$lib/share.js';
+	import { ME_PAYER } from '$lib/math.js';
+	import { titleCase } from '$lib/format.js';
 	import { tick } from 'svelte';
 	import IconX from './IconX.svelte';
 
-	/** @type {{ open: boolean, event: import('$lib/storage.js').EventRecord, date: string }} */
-	let { open = $bindable(false), event, date } = $props();
+	/**
+	 * @type {{
+	 *   open: boolean,
+	 *   event: import('$lib/storage.js').EventRecord,
+	 *   date: string,
+	 *   meLabel?: string,
+	 *   participantIndex?: number | null
+	 * }}
+	 */
+	let {
+		open = $bindable(false),
+		event,
+		date,
+		meLabel = ME_PAYER,
+		participantIndex = null
+	} = $props();
 
 	let imageSrc = $state('');
 	let downloadName = $state('pickleball-split.png');
 	/** @type {HTMLButtonElement | undefined} */
 	let closeButton = $state();
+
+	const isPersonShare = $derived(
+		typeof participantIndex === 'number' &&
+			participantIndex >= 0 &&
+			participantIndex < event.participants.length
+	);
+	const personName = $derived(
+		isPersonShare ? titleCase(event.participants[/** @type {number} */ (participantIndex)].name) : ''
+	);
 
 	$effect(() => {
 		if (open) {
@@ -27,8 +52,19 @@
 		(async () => {
 			await loadShareFonts();
 			if (cancelled) return;
-			imageSrc = generateShareImage(node, { event, date });
-			downloadName = `pickleball-${date}.png`;
+			if (isPersonShare) {
+				imageSrc = generatePersonShareImage(node, {
+					event,
+					date,
+					participantIndex: /** @type {number} */ (participantIndex),
+					meLabel
+				});
+				const slug = personName.toLowerCase().replace(/\s+/g, '-') || 'person';
+				downloadName = `pickleball-${date}-${slug}.png`;
+			} else {
+				imageSrc = generateShareImage(node, { event, date, meLabel });
+				downloadName = `pickleball-${date}.png`;
+			}
 		})();
 		return {
 			destroy() {
@@ -67,10 +103,22 @@
 			>
 				<IconX />
 			</button>
-			<h2 id="share-title">Shareable Summary</h2>
-			<canvas use:shareCanvas class="hidden"></canvas>
+			<h2 id="share-title">
+				{#if isPersonShare}
+					{personName}'s Summary
+				{:else}
+					Shareable Summary
+				{/if}
+			</h2>
+			{#key `${isPersonShare ? participantIndex : 'event'}-${date}`}
+				<canvas use:shareCanvas class="hidden"></canvas>
+			{/key}
 			{#if imageSrc}
-				<img class="share-image" src={imageSrc} alt="Shareable summary" />
+				<img
+					class="share-image"
+					src={imageSrc}
+					alt={isPersonShare ? `${personName} fee summary` : 'Shareable summary'}
+				/>
 			{/if}
 			<p class="hint">Long-press the image to save, or use the button below.</p>
 			<a class="btn-primary" href={imageSrc} download={downloadName}>

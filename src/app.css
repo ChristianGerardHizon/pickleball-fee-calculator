@@ -13,6 +13,12 @@
   --danger-100: #fee2e2;
   --danger-50: #fef2f2;
 
+  --custom-800: #92400e;
+  --custom-700: #b45309;
+  --custom-200: #fde68a;
+  --custom-100: #fef3c7;
+  --custom-50: #fffbeb;
+
   --ink-900: #0f172a;
   --ink-600: #475569;
   --ink-500: #64748b;
@@ -50,7 +56,7 @@ body {
 body.modal-open { overflow: hidden; }
 
 #app {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 24px 16px 56px;
   overflow-x: hidden;
@@ -515,11 +521,6 @@ body.modal-open { overflow: hidden; }
   color: var(--ink-600);
 }
 
-.participant-list.roster-list {
-  max-height: min(360px, 42vh);
-  margin: 0;
-}
-
 .roster-empty,
 .empty-state {
   margin: 0;
@@ -671,8 +672,15 @@ body.modal-open { overflow: hidden; }
   align-items: start;
 }
 
-@media (min-width: 720px) {
-  .grid { grid-template-columns: 1fr 1fr; }
+/* Participants need more width than Courts once rows have status + edit controls. */
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr);
+  }
+
+  .card-participants {
+    grid-column: 1 / -1;
+  }
 }
 
 .card {
@@ -980,20 +988,85 @@ input.court-label {
 }
 
 .participant-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 360px;
-  overflow-x: hidden;
+  max-height: 420px;
+  overflow-x: auto;
   overflow-y: auto;
   padding-right: 2px;
 }
 
-.participant-list::-webkit-scrollbar { width: 8px; }
+.participant-list.roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(360px, 42vh);
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.participant-list::-webkit-scrollbar { width: 8px; height: 8px; }
 .participant-list::-webkit-scrollbar-thumb { background: var(--ink-200); border-radius: 8px; }
 .participant-list::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
 
-.participant-row {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.participant-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  margin: 0;
+  display: block;
+}
+
+.participant-table thead {
+  display: none;
+}
+
+.participant-table tbody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.participant-table tr.participant-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 48px;
+  margin-bottom: 0;
+  padding: 6px 6px 6px 12px;
+  border: 1.5px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.participant-table td {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  vertical-align: middle;
+}
+
+.participant-table .col-paid { flex: none; }
+.participant-table .col-name { flex: 1; min-width: 0; }
+.participant-table .col-amount { flex: none; }
+.participant-table .col-edit { flex: none; }
+.participant-table .col-remove { flex: none; }
+
+/* Non-table roster rows keep the card look. */
+.participant-row:not(tr) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1013,6 +1086,11 @@ input.court-label {
   border-color: var(--emerald-200);
 }
 
+.participant-row.is-custom:not(.paid) {
+  background: var(--custom-50);
+  border-color: var(--custom-200);
+}
+
 .participant-owed {
   flex: none;
   font-size: 0.85rem;
@@ -1025,6 +1103,118 @@ input.court-label {
 
 .participant-row.paid .participant-owed {
   color: var(--emerald-800);
+}
+
+.participant-row.is-custom .participant-owed {
+  color: var(--custom-700);
+}
+
+.participant-row.is-custom.paid .participant-owed {
+  color: var(--emerald-800);
+}
+
+@media (min-width: 900px) {
+  .participant-list:not(.roster-list) {
+    max-height: min(520px, 55vh);
+  }
+
+  .participant-table {
+    display: table;
+    border-spacing: 0;
+  }
+
+  .participant-table thead {
+    display: table-header-group;
+  }
+
+  .participant-table tbody {
+    display: table-row-group;
+    gap: 0;
+  }
+
+  .participant-table thead th {
+    padding: 8px 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: left;
+    border-bottom: 1px solid var(--ink-200);
+    background: var(--ink-100);
+  }
+
+  .participant-table thead th:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .participant-table thead th:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .participant-table thead .col-amount {
+    text-align: right;
+  }
+
+  .participant-table thead .col-paid,
+  .participant-table thead .col-edit,
+  .participant-table thead .col-remove {
+    text-align: center;
+  }
+
+  .participant-table tr.participant-row {
+    display: table-row;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .participant-table tr.participant-row:nth-child(even) {
+    background: var(--ink-100);
+  }
+
+  .participant-table tr.participant-row.paid {
+    background: var(--emerald-50);
+  }
+
+  .participant-table tr.participant-row.is-custom:not(.paid) {
+    background: var(--custom-50);
+  }
+
+  .participant-table td {
+    display: table-cell;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ink-200);
+    vertical-align: middle;
+  }
+
+  .participant-table .col-paid {
+    width: 4.5rem;
+    text-align: center;
+  }
+
+  .participant-table .col-name {
+    width: auto;
+  }
+
+  .participant-table .col-amount {
+    width: 7rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .participant-table .col-edit,
+  .participant-table .col-remove {
+    width: 3.5rem;
+    text-align: center;
+  }
+
+  .participant-table .participant-owed {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* Beat global input[type=number]{width:100%} so the name column isn't crushed. */
@@ -1048,24 +1238,32 @@ input.court-label {
 .participant-fixed-btn {
   flex: none;
   box-sizing: border-box;
-  min-width: 5.5rem;
-  min-height: 44px;
-  padding: 8px 10px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 1.5px solid var(--ink-200);
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   background: var(--surface);
   color: var(--ink-500);
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
+.participant-fixed-btn .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  vertical-align: unset;
+}
+
 .participant-fixed-btn:hover {
-  background: var(--emerald-50);
-  border-color: var(--emerald-200);
-  color: var(--emerald-800);
+  background: var(--ink-100);
+  border-color: var(--ink-200);
+  color: var(--ink-900);
 }
 
 .participant-fixed-btn:focus-visible {
@@ -1073,10 +1271,20 @@ input.court-label {
   outline-offset: 2px;
 }
 
-.participant-fixed-btn.is-fixed {
-  color: var(--ink-800);
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
+.participant-fixed-btn.is-custom {
+  background: var(--custom-50);
+  border-color: var(--custom-200);
+  color: var(--custom-700);
+}
+
+.participant-fixed-btn.is-custom:hover {
+  background: var(--custom-100);
+  border-color: var(--custom-200);
+  color: var(--custom-800);
+}
+
+.participant-fixed-btn.is-custom:focus-visible {
+  outline-color: var(--custom-700);
 }
 
 .paid-badge {
@@ -1092,22 +1300,17 @@ input.court-label {
   white-space: nowrap;
 }
 
-.share-badge {
+.custom-badge {
   flex: none;
-  background: var(--ink-100);
-  color: var(--ink-500);
+  background: var(--custom-100);
+  color: var(--custom-800);
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 4px 8px;
   border-radius: var(--radius-full);
   white-space: nowrap;
-}
-
-.share-badge.is-fixed {
-  background: var(--emerald-50);
-  color: var(--emerald-800);
 }
 
 .participant-check {
@@ -1122,6 +1325,13 @@ input.court-label {
   min-height: 44px;
 }
 
+.participant-check-only {
+  flex: none;
+  justify-content: center;
+  min-width: 44px;
+  margin: 0;
+}
+
 .participant-check > span {
   flex: 1;
   min-width: 0;
@@ -1132,17 +1342,26 @@ input.court-label {
   color: var(--ink-900);
 }
 
-.participant-check > .participant-identity {
+.participant-identity {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.participant-check > .participant-identity {
+  flex: 1;
   overflow: visible;
   text-overflow: unset;
   white-space: normal;
 }
 
 .participant-name {
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -1152,12 +1371,43 @@ input.court-label {
   color: var(--ink-900);
 }
 
+.participant-name-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--emerald-700);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.participant-name-btn:hover {
+  color: var(--emerald-800);
+}
+
+.participant-name-btn:focus-visible {
+  outline: 2px solid var(--emerald-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .participant-meta {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
-  min-width: 0;
 }
 
 .participant-check input {
@@ -1195,6 +1445,58 @@ input.court-label {
   margin-bottom: 16px;
 }
 
+.summary-highlight.payto-highlight {
+  padding: 18px 20px 16px;
+}
+
+.payto-hero-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.payto-hero-name {
+  font-weight: 600;
+  font-size: 1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Sole "Me" payee: same centered hero as Amount per person */
+.summary-highlight.payto-only-me {
+  text-align: center;
+}
+
+.summary-highlight.payto-only-me .summary-highlight-label {
+  font-weight: 800;
+}
+
+.summary-highlight.payto-only-me .summary-highlight-value .payto-hero-each {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px;
+  font-size: 0.72rem;
+}
+
+.payto-hero-amount {
+  flex: none;
+  font-size: clamp(1.15rem, 4.5vw, 1.55rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.payto-hero-each {
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.75;
+  margin-left: 6px;
+}
+
 .money {
   font-family: Arial, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -1205,6 +1507,8 @@ input.court-label {
   font-size: 0.82rem;
   font-weight: 600;
   opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .summary-highlight-value {
@@ -1461,6 +1765,96 @@ input.court-label {
   margin-top: 0;
   font-size: 1.15rem;
   font-weight: 800;
+}
+
+.person-detail-modal {
+  text-align: left;
+  max-width: 520px;
+}
+
+.person-detail-modal h2 {
+  padding-right: 36px;
+}
+
+.person-detail-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  color: var(--ink-600);
+}
+
+.person-detail-total .money {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink-900);
+}
+
+.person-breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.person-breakdown-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.5rem;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1.5px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.person-breakdown-row.is-custom {
+  border-color: var(--custom-200);
+  background: var(--custom-50);
+}
+
+.person-breakdown-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.person-breakdown-name {
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.person-breakdown-sub {
+  font-size: 0.8rem;
+  color: var(--ink-500);
+}
+
+.person-breakdown-amount {
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+}
+
+.person-breakdown-readonly {
+  text-align: right;
+  font-weight: 700;
+}
+
+.person-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.person-detail-actions .btn-primary,
+.person-detail-actions .btn-secondary {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
 }
 
 .modal-close {

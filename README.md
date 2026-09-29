@@ -6,8 +6,8 @@ A SvelteKit app for splitting pickleball court fees among participants. Each per
 
 - Per-user accounts (email + password) with session cookies
 - Invisible Cloudflare Turnstile on sign in and create account
-- Add multiple courts, each with its own fee and an optional "Paid by" owner
-- When 2+ courts have different owners, the Summary shows a Reimbursements breakdown of how much is owed back to each person (their share of the total pool, collected proportionally as participants pay). Leave "Paid by" blank (or the same on every court) and this stays hidden — the app behaves as a single-owner splitter by default
+- Add multiple courts, each with its own fee and an optional "Pay to" booker
+- Summary highlights where money goes: amounts owed to each booker, plus "Me" for courts you booked yourself. Equal-split events show each person's share per destination; custom amounts show totals per booker
 - Mass-add participants by pasting a numbered list (e.g. `1. johanna`), or add one at a time
 - Starting a new event asks you to confirm the roster first: copy participants from a previous event, uncheck or remove anyone who isn’t playing, and add extra names before the event is created
 - Master list of members is remembered across events, so you can still add known names later from chips on the main screen

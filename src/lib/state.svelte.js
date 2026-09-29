@@ -208,7 +208,12 @@ export function createEventWithParticipants(date, names) {
 	app.data.events[date] = {
 		courts: [{ fee: 0, payer: '', name: '' }],
 		additionalFees: [],
-		participants: names.map((name) => ({ name, paid: false, fixedAmount: null })),
+		participants: names.map((name) => ({
+			name,
+			paid: false,
+			fixedAmount: null,
+			courtAmounts: [null]
+		})),
 		createdAt: new Date().toISOString()
 	};
 }
@@ -234,9 +239,17 @@ export function mergeNamesIntoMaster(names) {
 export function addParticipantsToEvent(names) {
 	const event = getCurrentEvent();
 	if (!event) return;
+	const courtCount = event.courts.length;
 	names.forEach((name) => {
 		const exists = event.participants.some((p) => p.name.toLowerCase() === name.toLowerCase());
-		if (!exists) event.participants.push({ name, paid: false, fixedAmount: null });
+		if (!exists) {
+			event.participants.push({
+				name,
+				paid: false,
+				fixedAmount: null,
+				courtAmounts: Array.from({ length: courtCount }, () => null)
+			});
+		}
 	});
 }
 
