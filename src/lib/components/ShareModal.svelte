@@ -5,15 +5,7 @@
 	import { tick } from 'svelte';
 	import IconX from './IconX.svelte';
 
-	/**
-	 * @type {{
-	 *   open: boolean,
-	 *   event: import('$lib/storage.js').EventRecord,
-	 *   date: string,
-	 *   meLabel?: string,
-	 *   participantIndex?: number | null
-	 * }}
-	 */
+	/** @type {{ open: boolean, event: import('$lib/storage.js').EventRecord, date: string, meLabel?: string, participantIndex?: number | null }} */
 	let {
 		open = $bindable(false),
 		event,
@@ -32,8 +24,15 @@
 			participantIndex >= 0 &&
 			participantIndex < event.participants.length
 	);
-	const personName = $derived(
-		isPersonShare ? titleCase(event.participants[/** @type {number} */ (participantIndex)].name) : ''
+
+	const personName = $derived.by(() => {
+		if (typeof participantIndex !== 'number') return '';
+		const person = event.participants[participantIndex];
+		return person ? titleCase(person.name) : '';
+	});
+
+	const canvasKey = $derived(
+		(isPersonShare ? String(participantIndex) : 'event') + '-' + date
 	);
 
 	$effect(() => {
@@ -52,11 +51,11 @@
 		(async () => {
 			await loadShareFonts();
 			if (cancelled) return;
-			if (isPersonShare) {
+			if (isPersonShare && typeof participantIndex === 'number') {
 				imageSrc = generatePersonShareImage(node, {
 					event,
 					date,
-					participantIndex: /** @type {number} */ (participantIndex),
+					participantIndex,
 					meLabel
 				});
 				const slug = personName.toLowerCase().replace(/\s+/g, '-') || 'person';
@@ -110,14 +109,14 @@
 					Shareable Summary
 				{/if}
 			</h2>
-			{#key `${isPersonShare ? participantIndex : 'event'}-${date}`}
+			{#key canvasKey}
 				<canvas use:shareCanvas class="hidden"></canvas>
 			{/key}
 			{#if imageSrc}
 				<img
 					class="share-image"
 					src={imageSrc}
-					alt={isPersonShare ? `${personName} fee summary` : 'Shareable summary'}
+					alt={isPersonShare ? personName + ' fee summary' : 'Shareable summary'}
 				/>
 			{/if}
 			<p class="hint">Long-press the image to save, or use the button below.</p>
