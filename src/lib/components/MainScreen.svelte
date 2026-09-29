@@ -1,6 +1,13 @@
 <script>
-	import { formatCurrency, formatDateLabel, parseNames, titleCase } from '$lib/format.js';
-	import { getAdditionalFees, getEventTotals } from '$lib/math.js';
+	import { formatAccountName, formatCurrency, formatDateLabel, parseNames, titleCase } from '$lib/format.js';
+	import {
+		ensureCourtAmountsLength,
+		getAdditionalFees,
+		getEventTotals,
+		getPersonBreakdown,
+		ME_PAYER,
+		payToDisplayName
+	} from '$lib/math.js';
 	import {
 		addParticipantsToEvent,
 		app,
@@ -20,15 +27,30 @@
 
 	const event = $derived(getCurrentEvent());
 	const totals = $derived(event ? getEventTotals(event) : null);
+	const multiPayTo = $derived(Boolean(totals?.multiPayTo));
+	const mePayToLabel = $derived(
+		app.sessionUser
+			? formatAccountName(app.sessionUser.email, app.sessionUser.displayName)
+			: ME_PAYER
+	);
+	const isOnlyMePayTo = $derived(
+		Boolean(
+			totals?.payTo &&
+				totals.payTo.rows.length === 1 &&
+				totals.payTo.rows[0].payer === ME_PAYER
+		)
+	);
 
 	let massText = $state('');
 	let quickName = $state('');
 	let shareOpen = $state(false);
+	let sharePersonIdx = $state(/** @type {number | null} */ (null));
 	let masterExpanded = $state(false);
 	let editingMasterIdx = $state(/** @type {number | null} */ (null));
 	let editMasterDraft = $state('');
 	let editingFixedIdx = $state(/** @type {number | null} */ (null));
 	let editFixedDraft = $state('');
+	let personDetailIdx = $state(/** @type {number | null} */ (null));
 
 	const MASTER_PREVIEW = 5;
 
@@ -43,14 +65,32 @@
 	);
 	const hiddenMasterCount = $derived(Math.max(0, availableMaster.length - MASTER_PREVIEW));
 
+	const personBreakdown = $derived(
+		event && personDetailIdx !== null ? getPersonBreakdown(event, personDetailIdx) : null
+	);
+
+	function syncAllCourtAmounts() {
+		if (!event) return;
+		const n = event.courts.length;
+		for (const p of event.participants) ensureCourtAmountsLength(p, n);
+	}
+
 	function addCourt() {
-		event?.courts.push({ fee: 0, payer: '', name: '' });
+		if (!event) return;
+		event.courts.push({ fee: 0, payer: '', name: '' });
+		syncAllCourtAmounts();
 		persist();
 	}
 
 	/** @param {number} idx */
 	function removeCourt(idx) {
-		event?.courts.splice(idx, 1);
+		if (!event) return;
+		event.courts.splice(idx, 1);
+		for (const p of event.participants) {
+			if (!Array.isArray(p.courtAmounts)) p.courtAmounts = [];
+			p.courtAmounts.splice(idx, 1);
+			ensureCourtAmountsLength(p, event.courts.length);
+		}
 		persist();
 	}
 
@@ -96,6 +136,12 @@
 	function removeParticipant(idx) {
 		if (editingFixedIdx === idx) cancelEditFixed();
 		else if (editingFixedIdx !== null && editingFixedIdx > idx) editingFixedIdx -= 1;
+		if (personDetailIdx === idx) closePersonDetail();
+		else if (personDetailIdx !== null && personDetailIdx > idx) personDetailIdx -= 1;
+		if (sharePersonIdx === idx) {
+			shareOpen = false;
+			sharePersonIdx = null;
+		} else if (sharePersonIdx !== null && sharePersonIdx > idx) sharePersonIdx -= 1;
 		event?.participants.splice(idx, 1);
 		persist();
 	}
@@ -176,7 +222,6 @@
 			return;
 		}
 		const n = Number(raw);
-		// Ignore incomplete/invalid drafts (e.g. "-", "1e") so we never persist NaN.
 		if (!Number.isFinite(n) || n < 0) {
 			cancelEditFixed();
 			return;
@@ -197,11 +242,73 @@
 		}
 	}
 
+	/** @param {number} idx */
+	function openPersonDetail(idx) {
+		if (!event) return;
+		ensureCourtAmountsLength(event.participants[idx], event.courts.length);
+		personDetailIdx = idx;
+	}
+
+	function closePersonDetail() {
+		personDetailIdx = null;
+	}
+
+	/**
+	 * @param {number} courtIdx
+	 * @param {string} raw
+	 */
+	function setPersonCourtAmount(courtIdx, raw) {
+		if (personDetailIdx === null || !event) return;
+		const person = event.participants[personDetailIdx];
+		if (!person) return;
+		ensureCourtAmountsLength(person, event.courts.length);
+		const trimmed = raw.trim();
+		if (trimmed === '') {
+			person.courtAmounts[courtIdx] = null;
+			persistSoon();
+			return;
+		}
+		const n = Number(trimmed);
+		if (!Number.isFinite(n) || n < 0) return;
+		person.courtAmounts[courtIdx] = n;
+		persistSoon();
+	}
+
+	function clearPersonCustoms() {
+		if (personDetailIdx === null || !event) return;
+		const person = event.participants[personDetailIdx];
+		if (!person) return;
+		person.courtAmounts = event.courts.map(() => null);
+		person.fixedAmount = null;
+		persist();
+	}
+
+	function openEventShare() {
+		sharePersonIdx = null;
+		shareOpen = true;
+	}
+
+	function openPersonShare() {
+		if (personDetailIdx === null) return;
+		sharePersonIdx = personDetailIdx;
+		shareOpen = true;
+	}
+
 	/** @param {KeyboardEvent} e */
 	function onQuickKeydown(e) {
 		if (e.key === 'Enter') quickAdd();
 	}
+
+	/** @param {KeyboardEvent} e */
+	function onPersonDetailKeydown(e) {
+		if (e.key === 'Escape' && personDetailIdx !== null && !shareOpen) {
+			e.preventDefault();
+			closePersonDetail();
+		}
+	}
 </script>
+
+<svelte:window onkeydown={onPersonDetailKeydown} />
 
 {#if event && app.currentDate && totals}
 	<section class="screen">
@@ -293,8 +400,8 @@
 							<input
 								type="text"
 								class="court-payer-input"
-								placeholder="Paid by (optional)"
-								aria-label="{courtLabel} paid by"
+								placeholder="Pay to (optional)"
+								aria-label="{courtLabel} pay to"
 								bind:value={court.payer}
 								oninput={persistSoon}
 							/>
@@ -365,8 +472,8 @@
 							<input
 								type="text"
 								class="court-payer-input"
-								placeholder="Paid by (optional)"
-								aria-label="{extraLabel} paid by"
+								placeholder="Pay to (optional)"
+								aria-label="{extraLabel} pay to"
 								bind:value={extra.payer}
 								oninput={persistSoon}
 							/>
@@ -379,7 +486,7 @@
 				</button>
 			</div>
 
-			<div class="card">
+			<div class="card card-participants">
 				<h2>
 					<span class="card-icon">
 						<svg
@@ -450,68 +557,117 @@
 				<div class="participant-list">
 					{#if event.participants.length === 0}
 						<p class="empty-state">No participants yet. Add names above or from the master list.</p>
-					{/if}
-					{#each event.participants as person, idx (person.name + idx)}
-						{@const amountRow = totals.participantAmounts[idx]}
-						{@const isFixed = Boolean(amountRow?.isFixed)}
-						<div class="participant-row" class:paid={person.paid}>
-							<label class="participant-check">
-								<input type="checkbox" bind:checked={person.paid} onchange={persist} />
-								<span class="participant-identity">
-									<span class="participant-name">{titleCase(person.name)}</span>
-									<span class="participant-meta">
-										<span class="share-badge" class:is-fixed={isFixed}>
-											{isFixed ? 'Fixed' : 'Equal'}
-										</span>
-										{#if person.paid}
-											<span class="paid-badge">Paid</span>
+					{:else}
+						<table class="participant-table">
+							<thead>
+								<tr>
+									<th scope="col" class="col-paid">Paid</th>
+									<th scope="col" class="col-name">Name</th>
+									<th scope="col" class="col-amount">Amount</th>
+									{#if !multiPayTo}
+										<th scope="col" class="col-edit">
+											<span class="sr-only">Custom amount</span>
+										</th>
+									{/if}
+									<th scope="col" class="col-remove">
+										<span class="sr-only">Remove</span>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each event.participants as person, idx (person.name + idx)}
+									{@const amountRow = totals.participantAmounts[idx]}
+									{@const isFixed = Boolean(amountRow?.isFixed)}
+									<tr class="participant-row" class:paid={person.paid} class:is-custom={isFixed}>
+										<td class="col-paid">
+											<label class="participant-check participant-check-only">
+												<input
+													type="checkbox"
+													bind:checked={person.paid}
+													onchange={persist}
+													aria-label="Mark {titleCase(person.name)} as paid"
+												/>
+											</label>
+										</td>
+										<td class="col-name">
+											<span class="participant-identity">
+												{#if multiPayTo}
+													<button
+														type="button"
+														class="participant-name-btn"
+														onclick={() => openPersonDetail(idx)}
+													>
+														{titleCase(person.name)}
+													</button>
+												{:else}
+													<span class="participant-name">{titleCase(person.name)}</span>
+												{/if}
+												{#if isFixed || person.paid}
+													<span class="participant-meta">
+														{#if isFixed}
+															<span class="custom-badge">Custom</span>
+														{/if}
+														{#if person.paid}
+															<span class="paid-badge">Paid</span>
+														{/if}
+													</span>
+												{/if}
+											</span>
+										</td>
+										<td class="col-amount">
+											<span class="participant-owed money" title="Amount owed">
+												{formatCurrency(amountRow?.owed ?? 0)}
+											</span>
+										</td>
+										{#if !multiPayTo}
+											<td class="col-edit">
+												{#if editingFixedIdx === idx}
+													<input
+														type="number"
+														min="0"
+														step="0.01"
+														inputmode="decimal"
+														class="participant-fixed"
+														placeholder="amount"
+														aria-label="{titleCase(person.name)} custom amount"
+														value={editFixedDraft}
+														autofocus
+														oninput={(e) => {
+															editFixedDraft = e.currentTarget.value;
+														}}
+														onkeydown={onEditFixedKeydown}
+														onblur={saveEditFixed}
+													/>
+												{:else}
+													<button
+														type="button"
+														class="participant-fixed-btn"
+														class:is-custom={isFixed}
+														aria-label={isFixed
+															? `Edit ${titleCase(person.name)} custom amount`
+															: `Set custom amount for ${titleCase(person.name)}`}
+														onclick={() => startEditFixed(idx)}
+													>
+														<IconPencil />
+													</button>
+												{/if}
+											</td>
 										{/if}
-									</span>
-								</span>
-							</label>
-							<span class="participant-owed money" title="Amount owed">
-								{formatCurrency(amountRow?.owed ?? 0)}
-							</span>
-							{#if editingFixedIdx === idx}
-								<input
-									type="number"
-									min="0"
-									step="0.01"
-									inputmode="decimal"
-									class="participant-fixed"
-									placeholder="equal"
-									aria-label="{titleCase(person.name)} fixed amount"
-									value={editFixedDraft}
-									autofocus
-									oninput={(e) => {
-										editFixedDraft = e.currentTarget.value;
-									}}
-									onkeydown={onEditFixedKeydown}
-									onblur={saveEditFixed}
-								/>
-							{:else}
-								<button
-									type="button"
-									class="participant-fixed-btn"
-									class:is-fixed={isFixed}
-									aria-label="Edit {titleCase(person.name)} amount"
-									onclick={() => startEditFixed(idx)}
-								>
-									{isFixed && person.fixedAmount != null
-										? formatCurrency(person.fixedAmount)
-										: 'Equal'}
-								</button>
-							{/if}
-							<button
-								type="button"
-								class="remove-btn"
-								aria-label="Remove participant"
-								onclick={() => removeParticipant(idx)}
-							>
-								<IconX />
-							</button>
-						</div>
-					{/each}
+										<td class="col-remove">
+											<button
+												type="button"
+												class="remove-btn"
+												aria-label="Remove participant"
+												onclick={() => removeParticipant(idx)}
+											>
+												<IconX />
+											</button>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -537,23 +693,52 @@
 				Summary
 			</h2>
 			<div>
-				<div class="summary-highlight">
-					<span class="summary-highlight-label">
-						{totals.hasFixedAmounts ? 'Standard share' : 'Amount per person'}
-					</span>
-					<span class="summary-highlight-value money">{formatCurrency(totals.perPerson)}</span>
-				</div>
+				{#if totals.payTo && isOnlyMePayTo}
+					<div class="summary-highlight payto-only-me">
+						<span class="summary-highlight-label">Pay to {mePayToLabel}</span>
+						<span class="summary-highlight-value money">
+							{formatCurrency(totals.payTo.rows[0].amount)}{#if totals.payTo.mode === 'each'}<span
+									class="payto-hero-each">each</span
+								>{/if}
+						</span>
+					</div>
+				{:else if totals.payTo}
+					<div class="summary-highlight payto-highlight">
+						<span class="summary-highlight-label">Pay to</span>
+						{#each totals.payTo.rows as row, idx (`${row.payer}-${idx}`)}
+							<div class="payto-hero-row">
+								<span class="payto-hero-name">{payToDisplayName(row.payer, mePayToLabel)}</span>
+								<span class="payto-hero-amount money">
+									{formatCurrency(row.amount)}{#if totals.payTo.mode === 'each'}<span
+											class="payto-hero-each">each</span
+										>{/if}
+								</span>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<div class="summary-highlight">
+						<span class="summary-highlight-label">
+							{totals.hasFixedAmounts ? 'Standard share' : 'Amount per person'}
+						</span>
+						<span class="summary-highlight-value money">{formatCurrency(totals.perPerson)}</span>
+					</div>
+				{/if}
 				{#if totals.hasFixedAmounts}
 					<p class="fixed-amounts-note">
 						{totals.fixedCount}
-						{totals.fixedCount === 1 ? 'person' : 'people'} on fixed amounts
-						({formatCurrency(totals.fixedTotal)} total)
+						{totals.fixedCount === 1 ? 'person' : 'people'} with custom amounts
+						({formatCurrency(totals.fixedTotal)} total). Summary above is for everyone else.
 					</p>
 				{/if}
 				{#if totals.fixedMismatch}
 					<p class="field-error" role="alert">
-						Fixed amounts ({formatCurrency(totals.fixedTotal)}) don’t match the total fee
-						({formatCurrency(totals.totalFee)}).
+						{#if totals.multiPayTo}
+							Custom court amounts don’t match one or more court fees.
+						{:else}
+							Fixed amounts ({formatCurrency(totals.fixedTotal)}) don’t match the total fee
+							({formatCurrency(totals.totalFee)}).
+						{/if}
 					</p>
 				{/if}
 				<div class="fee-breakdown">
@@ -592,24 +777,8 @@
 						<span class="value money">{formatCurrency(totals.remaining)}</span>
 					</div>
 				</div>
-				{#if totals.payerRows}
-					<div class="payer-breakdown">
-						<h3 class="payer-breakdown-title">Reimbursements</h3>
-						{#each totals.payerRows as row (row.payer)}
-							<div class="payer-row">
-								<span class="payer-name">{row.payer}</span>
-								<div class="payer-amounts">
-									<span class="payer-remaining money"
-										>{formatCurrency(row.remaining)}<span class="payer-sub">owed</span></span
-									>
-									<span class="payer-total money">of {formatCurrency(row.feeSum)} fronted</span>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
 			</div>
-			<button type="button" class="btn-primary" onclick={() => (shareOpen = true)}>
+			<button type="button" class="btn-primary" onclick={openEventShare}>
 				<svg
 					class="icon"
 					viewBox="0 0 24 24"
@@ -709,5 +878,94 @@
 		</details>
 	</section>
 
-	<ShareModal bind:open={shareOpen} {event} date={app.currentDate} />
+	{#if personDetailIdx !== null && personBreakdown}
+		<div
+			class="modal"
+			onclick={(e) => {
+				if (e.target === e.currentTarget) closePersonDetail();
+			}}
+			role="presentation"
+		>
+			<div
+				class="modal-content person-detail-modal"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="person-detail-title"
+			>
+				<button
+					type="button"
+					class="modal-close"
+					aria-label="Close"
+					onclick={closePersonDetail}
+				>
+					<IconX />
+				</button>
+				<h2 id="person-detail-title">{titleCase(personBreakdown.name)}</h2>
+				<p class="hint person-detail-total">
+					Total owed
+					<span class="money">{formatCurrency(personBreakdown.owed)}</span>
+				</p>
+
+				{#if personBreakdown.multiPayTo}
+					<div class="person-breakdown-list">
+						{#each personBreakdown.courtLines as line (line.courtIndex)}
+							<div class="person-breakdown-row" class:is-custom={line.isCustom}>
+								<div class="person-breakdown-meta">
+									<span class="person-breakdown-name">{line.courtName}</span>
+									<span class="person-breakdown-sub">
+										Fee {formatCurrency(line.fee)} · Pay to {payToDisplayName(
+											line.payer,
+											mePayToLabel
+										)}
+									</span>
+								</div>
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									inputmode="decimal"
+									class="person-breakdown-amount"
+									aria-label="{line.courtName} amount for {titleCase(personBreakdown.name)}"
+									placeholder={String(line.amount)}
+									value={line.isCustom ? String(line.amount) : ''}
+									oninput={(e) => setPersonCourtAmount(line.courtIndex, e.currentTarget.value)}
+								/>
+							</div>
+						{/each}
+						{#if personBreakdown.extraShare > 0.004}
+							<div class="person-breakdown-row person-breakdown-extra">
+								<div class="person-breakdown-meta">
+									<span class="person-breakdown-name">Extra fees</span>
+									<span class="person-breakdown-sub">Split evenly</span>
+								</div>
+								<span class="money person-breakdown-readonly">
+									{formatCurrency(personBreakdown.extraShare)}
+								</span>
+							</div>
+						{/if}
+					</div>
+					<p class="hint">Leave blank to use the equal share for that court.</p>
+				{/if}
+
+				<div class="person-detail-actions">
+					{#if personBreakdown.isFixed}
+						<button type="button" class="btn-secondary" onclick={clearPersonCustoms}>
+							Clear custom
+						</button>
+					{/if}
+					<button type="button" class="btn-primary" onclick={openPersonShare}>
+						Generate summary
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<ShareModal
+		bind:open={shareOpen}
+		{event}
+		date={app.currentDate}
+		meLabel={mePayToLabel}
+		participantIndex={sharePersonIdx}
+	/>
 {/if}
